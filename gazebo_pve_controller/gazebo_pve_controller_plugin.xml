@@ -1,0 +1,9 @@
+<library path="lib/libgazebo_pve_controller">
+
+  <class name="effort_controllers/GazeboPVEController" type="effort_controllers::GazeboPVEController" base_class_type="controller_interface::ControllerBase">
+    <description>
+      The GazeboPVEController simulates controller of MIT MiniCheetah Motor, which takes five params: pos, kp, vel, kd, torque as input for one motor.
+    </description>
+  </class>
+
+</library>

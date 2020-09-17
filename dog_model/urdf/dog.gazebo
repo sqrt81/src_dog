@@ -1,0 +1,117 @@
+<?xml version="1.0"?>
+<robot
+  xmlns:xacro="http://www.ros.org/wiki/xacro">
+  
+  <!--
+  <link name="world" />
+  <joint
+    name="fixed_body"
+    type="prismatic">
+    <origin
+      xyz="0 0 0.4"
+      rpy="0 3.14 0" />
+    <parent link="world" />
+    <child link="dummy" />
+    <axis xyz="0 0 1" />
+    <limit lower="-0.4" upper="0.1" effort="10000" velocity="1000" />
+  </joint>
+  -->
+  
+  <link name="dummy" />
+  <joint name="dummy_joint" type="fixed">
+    <parent link="dummy" />
+    <child link="torso" />
+  </joint>
+  
+  <gazebo>
+    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+      <robotNamespace>/dog</robotNamespace>
+      <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+      <legacyModeNS>true</legacyModeNS>
+    </plugin>
+    <plugin name="p3d_base_controller" filename="libgazebo_ros_p3d.so">
+      <alwaysOn>true</alwaysOn>
+      <updateRate>50.0</updateRate>
+      <bodyName>torso</bodyName>
+      <topicName>ground_truth/state</topicName>
+      <gaussianNoise>0.01</gaussianNoise>
+      <frameName>world</frameName>
+      <xyzOffsets>0 0 0</xyzOffsets>
+      <rpyOffsets>0 0 0</rpyOffsets>
+    </plugin>
+  </gazebo>
+  
+  <gazebo reference="torso">
+    <gravity>true</gravity>
+    <sensor name="imu_sensor" type="imu">
+      <always_on>true</always_on>
+      <update_rate>50</update_rate>
+      <visualize>true</visualize>
+      <topic>__default_topic__</topic>
+      <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
+        <topicName>imu</topicName>
+        <bodyName>torso</bodyName>
+        <updateRateHZ>50.0</updateRateHZ>
+        <gaussianNoise>0.2</gaussianNoise>
+        <xyzOffset>0 0 0</xyzOffset>
+        <rpyOffset>0 0 0</rpyOffset>
+        <frameName>torso</frameName>
+      </plugin>
+    </sensor>
+    <selfCollide>true</selfCollide>
+    <kp>1000.0</kp>
+    <kd>100.0</kd>
+  </gazebo>
+  
+  <xacro:macro name="enableSelfCollide" params="link">
+    <gazebo reference="${link}">
+      <selfCollide>true</selfCollide>
+      <kp>10000000.0</kp>
+      <kd>100.0</kd>
+    </gazebo>
+  </xacro:macro>
+  
+  <xacro:macro name="addTrans" params="joint id">
+    <transmission name="trans${id}">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="${joint}">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="motor${id}">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+  </xacro:macro>
+  
+  <!--<xacro:enableSelfCollide link="torso" />-->
+  <xacro:enableSelfCollide link="fl_hip" />
+  <xacro:enableSelfCollide link="fl_thigh" />
+  <xacro:enableSelfCollide link="fl_shin" />
+  <xacro:enableSelfCollide link="fl_foot" />
+  <xacro:enableSelfCollide link="fr_hip" />
+  <xacro:enableSelfCollide link="fr_thigh" />
+  <xacro:enableSelfCollide link="fr_shin" />
+  <xacro:enableSelfCollide link="fr_foot" />
+  <xacro:enableSelfCollide link="bl_hip" />
+  <xacro:enableSelfCollide link="bl_thigh" />
+  <xacro:enableSelfCollide link="bl_shin" />
+  <xacro:enableSelfCollide link="bl_foot" />
+  <xacro:enableSelfCollide link="br_hip" />
+  <xacro:enableSelfCollide link="br_thigh" />
+  <xacro:enableSelfCollide link="br_shin" />
+  <xacro:enableSelfCollide link="br_foot" />
+  
+  <xacro:addTrans joint="fl_hip_x" id="1" />
+  <xacro:addTrans joint="fl_hip_y" id="2" />
+  <xacro:addTrans joint="fl_knee"  id="3" />
+  <xacro:addTrans joint="fr_hip_x" id="4" />
+  <xacro:addTrans joint="fr_hip_y" id="5" />
+  <xacro:addTrans joint="fr_knee"  id="6" />
+  <xacro:addTrans joint="bl_hip_x" id="7" />
+  <xacro:addTrans joint="bl_hip_y" id="8" />
+  <xacro:addTrans joint="bl_knee"  id="9" />
+  <xacro:addTrans joint="br_hip_x" id="10" />
+  <xacro:addTrans joint="br_hip_y" id="11" />
+  <xacro:addTrans joint="br_knee"  id="12" />
+</robot>
