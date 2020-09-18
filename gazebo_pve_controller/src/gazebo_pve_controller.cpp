@@ -24,7 +24,9 @@ inline double clamp(const double x, const double lower, const double upper)
 
 GazeboPVEController::~GazeboPVEController()
 {
-    motor_state_pub_.shutdown();
+    if(publish_state_)
+        motor_state_pub_.shutdown();
+
     command_sub_.shutdown();
 }
 
@@ -36,6 +38,7 @@ bool GazeboPVEController::init(hardware_interface::EffortJointInterface *hw,
     joints_.clear();
     // List of controlled joints
     const std::string param_name = "joints";
+    const std::string pub_stat_option = "publish_states";
     std::vector<std::string> joint_names;
 
     if(!nh.getParam(param_name, joint_names))
@@ -44,6 +47,19 @@ bool GazeboPVEController::init(hardware_interface::EffortJointInterface *hw,
                          << param_name << "' (namespace: "
                          << nh.getNamespace() << ").");
         return false;
+    }
+
+    if(!nh.getParam(pub_stat_option, publish_state_))
+    {
+        ROS_INFO_STREAM("PVE Controller: '" << pub_stat_option
+                        << "' is not set.");
+        publish_state_ = true;
+    }
+
+    if(publish_state_)
+    {
+        ROS_INFO("PVE Controller: Publishing motor state"
+                 " on incoming commands.");
     }
 
     joint_cnt_ = joint_names.size();
@@ -99,8 +115,12 @@ bool GazeboPVEController::init(hardware_interface::EffortJointInterface *hw,
     joint_cmd_.resize(joint_cnt_, {0., 0., 0., 0., 0.});
     joint_state_.resize(joint_cnt_, {0., 0., 0.});
 
-    motor_state_pub_ = nh.advertise<std_msgs::Float64MultiArray>(
-                "motor_states", 1, false);
+    if(publish_state_)
+    {
+        motor_state_pub_ = nh.advertise<std_msgs::Float64MultiArray>(
+                    "motor_states", 1, false);
+    }
+
     command_sub_ = nh.subscribe<std_msgs::Float64MultiArray>(
                 "command", 1, &GazeboPVEController::commandCB, this);
 
@@ -124,19 +144,20 @@ void GazeboPVEController::update(const ros::Time &time,
         const double actual_pos = motor.getPosition();
         const double actual_vel = motor.getVelocity();
 
-        const double pos_err = actual_pos - motor_cmd.x_desired;
-        const double vel_err = actual_vel - motor_cmd.v_desired;
+        const double pos_err = motor_cmd.x_desired - actual_pos;
+        const double vel_err = motor_cmd.v_desired - actual_vel;
         const double cmd_torque =
                 clamp(pos_err * motor_cmd.kp
                       + vel_err * motor_cmd.kd
                       + motor_cmd.torque,
                       motor_limits[0],
                       motor_limits[1]);
-        motor.setCommand(cmd_torque);
 
         motor_state.pos = actual_pos;
         motor_state.vel = actual_vel;
         motor_state.torq = motor.getEffort();
+
+        motor.setCommand(cmd_torque);
     }
 }
 
@@ -153,13 +174,13 @@ void GazeboPVEController::commandCB(
 
     std_msgs::Float64MultiArray state_msg;
     state_msg.data.resize(joint_cnt_ * 3);
+    const double* input_msg = msg->data.data();
+    double* output_msg = state_msg.data.data();
 
     for(unsigned int i = 0; i < joint_cnt_; i++)
     {
         MotorCommand& motor_cmd = joint_cmd_[i];
         const MotorState& motor_state = joint_state_[i];
-        const double* input_msg = msg->data.data();
-        double* output_msg = state_msg.data.data();
 
         motor_cmd.x_desired = input_msg[joint_cnt_ * 0 + i];
         motor_cmd.kp        = input_msg[joint_cnt_ * 1 + i];
@@ -172,7 +193,8 @@ void GazeboPVEController::commandCB(
         output_msg[joint_cnt_ * 2 + i] = motor_state.torq;
     }
 
-    motor_state_pub_.publish(state_msg);
+    if(publish_state_)
+        motor_state_pub_.publish(state_msg);
 }
 
 } // namespace effort_controllers

@@ -8,7 +8,8 @@
 
 ## 使用方法
 1. 把这个仓库clone到ros的工作空间（catkin_ws）之下  
-2. `catkin_make --source=src_dog`  
+2. `catkin_init_workspace src_dog`  
+3. `catkin_make --source=src_dog`  
 
 ***
 

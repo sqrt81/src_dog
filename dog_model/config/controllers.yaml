@@ -17,4 +17,4 @@ dog:
       - br_hip_x
       - br_hip_y
       - br_knee
-    publish_rate: 1000
+    publish_states: false

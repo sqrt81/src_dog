@@ -5,7 +5,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /Status1
         - /RobotModel1/Links1
       Splitter Ratio: 0.5
     Tree Height: 692
@@ -35,6 +34,14 @@ Toolbars:
 Visualization Manager:
   Class: ""
   Displays:
+    - Alpha: 1
+      Class: rviz/Axes
+      Enabled: true
+      Length: 0.5
+      Name: Axes
+      Radius: 0.009999999776482582
+      Reference Frame: <Fixed Frame>
+      Value: true
     - Alpha: 0.5
       Cell Size: 1
       Class: rviz/Grid
@@ -168,6 +175,10 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
       Name: RobotModel
       Robot Description: robot_description
       TF Prefix: ""
@@ -218,9 +229,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.579796552658081
+      Pitch: 0.8547960519790649
       Target Frame: <Fixed Frame>
-      Yaw: 5.95176362991333
+      Yaw: 1.953578233718872
     Saved: ~
 Window Geometry:
   Displays:

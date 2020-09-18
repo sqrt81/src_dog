@@ -42,6 +42,7 @@ private:
         double torq;
     };
 
+    bool publish_state_;
     ros::Publisher motor_state_pub_;
     ros::Subscriber command_sub_;
 
