@@ -1,20 +1,10 @@
-% 计算动力学参数：H、C、G，满足：
-% tau = H * ddq + C * dq + G * g，
-% 其中，H = H(q)，C = C(q, vq)，G = G(q),
-% 且满足关系：H = transpose(H)， dH = C + transpose(C)。
+% 妫�楠屽姩鍔涘鐭╅樀鏄惁姝ｇ‘
 
-LegDynamicParams;
+clc;
+clear;
 
-% H
-H = jacobian(torq, acc);
+DynamicsMatrix;
 
-% C
-C = jacobian(torq, vel) / 2;
-
-% G
-G = jacobian(torq, gravity(1:3));
-
-% 检验结果是否正确
 q = randn(1, 3);
 dq = randn(1, 3) * 10;
 ddq = randn(1, 3) * 10;
@@ -50,6 +40,7 @@ sub_list = [
     ddq
     ];
 
-disp("testing result, error is: ");
+disp("Testing Dynamics Matrix, error is: ");
 err = transpose(H * acc + C * vel + G * gravity(1:3)) - torq;
 disp(eval(subs(err, sym_list, sub_list)));
+

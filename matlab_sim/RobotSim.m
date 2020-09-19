@@ -14,28 +14,28 @@ points =(center + radius*[cos(theta) sin(theta) zeros(size(theta))])';
 hold on
 plot3(points(1,:),points(2,:),points(3,:),'r')
 %eeOffset = 0.01;
-%eeBody = robotics.RigidBody('end_effector');%¶¨ÒåÄ©¶ËÖ´ĞĞÆ÷£¬²¢ÔÙºóÃæÌí¼Óµ½»úÆ÷ÈËµÄLink5ÉÏ
+%eeBody = robotics.RigidBody('end_effector');%å®šä¹‰æœ«ç«¯æ‰§è¡Œå™¨ï¼Œå¹¶å†åé¢æ·»åŠ åˆ°æœºå™¨äººçš„Link5ä¸Š
 %setFixedTransform(eeBody.Joint,trvec2tform([eeOffset 0 0]));
 %addBody(robot,eeBody,'puma_link_5');
-ik = robotics.InverseKinematics('RigidBodyTree',robot);%Äæ½â½âËãÆ÷
-weights = [0.1 0.1 0 0 0 0]; %È¨ÖØ
+ik = robotics.InverseKinematics('RigidBodyTree',robot);%é€†è§£è§£ç®—å™¨
+weights = [0.1 0.1 0 0 0 0]; %æƒé‡
 qInitial = robot.homeConfiguration;
 %%
-%Í¨¹ıµãµÄ¹ì¼£Ñ­»·À´¸ú×ÙÔ²¡£µ÷ÓÃÃ¿¸öµãµÄik¶ÔÏóÒÔÉú³ÉÊµÏÖÄ©¶ËÎ»ÖÃµÄ¹Ø½ÚÅäÖÃ£¬´æ´¢ÒªÉÔºóÊ¹ÓÃµÄÄæ½â½á¹û¡£
+%é€šè¿‡ç‚¹çš„è½¨è¿¹å¾ªç¯æ¥è·Ÿè¸ªåœ†ã€‚è°ƒç”¨æ¯ä¸ªç‚¹çš„ikå¯¹è±¡ä»¥ç”Ÿæˆå®ç°æœ«ç«¯ä½ç½®çš„å…³èŠ‚é…ç½®ï¼Œå­˜å‚¨è¦ç¨åä½¿ç”¨çš„é€†è§£ç»“æœã€‚
 for i = 1:size(points,2)
 % Solve for the configuration satisfying the desired end effector
-tform = rpy2tr(136,-180,-180);%×ËÌ¬Æë´Î¾ØÕó
-tform = trvec2tform(points(:,i)')*tform ;%Ä©¶ËÎ»×ËÆë´Î¾ØÕó
-qSol = ik('fl_foot',tform,weights,qInitial);%Çó½â¸÷¹Ø½Ú½Ç¶È
+tform = rpy2tr(136,-180,-180);%å§¿æ€é½æ¬¡çŸ©é˜µ
+tform = trvec2tform(points(:,i)')*tform ;%æœ«ç«¯ä½å§¿é½æ¬¡çŸ©é˜µ
+qSol = ik('fl_foot',tform,weights,qInitial);%æ±‚è§£å„å…³èŠ‚è§’åº¦
 % Start from prior solution
 qInitial = qSol;
 end
-%% ¶¯»­ÏÔÊ¾
+%% åŠ¨ç”»æ˜¾ç¤º
 title('robot move follow the trajectory')
 hold on
 axis([-0.8 0.8 -0.8 0.85 0 1.3]);
 for i = 1:size(points,2)
-show(robot,qSol','PreservePlot',false);%false¸ÄÎªtrueÊ±£¬ÁôÏÂÖØÓ°¡£
+show(robot,qSol','PreservePlot',false);%falseæ”¹ä¸ºtrueæ—¶ï¼Œç•™ä¸‹é‡å½±ã€‚
 pause(0.3)
 plot3(points(1,i),points(2,i),points(3,i),'.','LineWidth',1);
 end
