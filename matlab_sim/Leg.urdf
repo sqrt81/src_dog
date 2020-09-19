@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot
+  name="dog"
+  xmlns:xacro="http://www.ros.org/wiki/xacro">
+  
+  <link name="fl_base">
+    <inertial>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <mass
+        value="1E-5" />
+      <inertia
+        ixx="1E-9"
+        ixy="0"
+        ixz="0"
+        iyy="1E-9"
+        iyz="0"
+        izz="1E-9" />
+    </inertial>
+  </link>
+  
+  <link
+    name="fl_hip">
+    <inertial>
+      <origin
+        xyz="0.050160 -0.013329 1.2E-5"
+        rpy="0 0 0" />
+      <mass
+        value="0.650" />
+      <inertia
+        ixx="399.183E-6"
+        ixy="-13.085E-6"
+        ixz="0.806E-6"
+        iyy="708.749E-6"
+        iyz="-0.457E-6"
+        izz="460.327E-6" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="meshes/visualization/fl_hip.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="3.14159 0 0" />
+      <geometry>
+        <mesh
+          filename="package://dog_model/meshes/collision/fr_hip.stl" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint
+    name="fl_hip_x"
+    type="revolute">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="fl_base" />
+    <child link="fl_hip" />
+    <axis xyz="1 0 0" />
+    <dynamics
+      damping="0.04"
+      friction="0.09" />
+    <limit
+      lower="-1.60"
+      upper="1.60"
+      effort="17"
+      velocity="40" />
+    <safety_controller
+      soft_lower_limit="-1.60"
+      soft_upper_limit="1.60"
+      k_velocity="100"
+      k_position="1000" />
+  </joint>
+  
+  <link
+    name="fl_thigh">
+    <inertial>
+      <origin
+        xyz="-0.019E-3 29.693E-3 -13.531E-3"
+        rpy="0 0 0" />
+      <mass
+        value="0.863" />
+      <inertia
+        ixx="2082.653E-6"
+        ixy="-0.090E-6"
+        ixz="-0.121E-6"
+        iyy="2271.664E-6"
+        iyz="-261.229E-6"
+        izz="617.145E-6" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="meshes/visualization/fl_thigh.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="dog_model/meshes/collision/thigh.stl" />
+      </geometry>
+    </collision>
+  </link>
+  
+  <joint
+    name="fl_hip_y"
+    type="revolute">
+    <origin xyz="0.053 0.0575 0" rpy="0 0 0" />
+    <parent link="fl_hip" />
+    <child link="fl_thigh" />
+    <axis xyz="0 1 0" />
+    <dynamics
+      damping="0.04"
+      friction="0.09" />
+    <limit
+      lower="-3.89"
+      upper="1.50"
+      effort="17"
+      velocity="40" />
+    <safety_controller
+      soft_lower_limit="-3.89"
+      soft_upper_limit="1.50"
+      k_velocity="100"
+      k_position="1000" />
+  </joint>
+  
+  <link
+    name="fl_shin">
+    <inertial>
+      <origin
+        xyz="0 0.012E-3 -93.811E-3"
+        rpy="0 0 0" />
+      <mass
+        value="0.119" />
+      <inertia
+        ixx="827.276E-6"
+        ixy="0"
+        ixz="0"
+        iyy="834.282E-6"
+        iyz="0.116E-6"
+        izz="15.950E-6" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="meshes/visualization/fl_shin.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.89804 0.91765 0.92941 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="meshes/collision/shin.stl" />
+      </geometry>
+    </collision>
+  </link>
+  
+  <joint
+    name="fl_knee"
+    type="revolute">
+    <origin xyz="0 0 -0.2" rpy="0 0 0" />
+    <parent link="fl_thigh" />
+    <child link="fl_shin" />
+    <axis xyz="0 1 0" />
+    <dynamics
+      damping="0.04"
+      friction="0.09" />
+    <limit
+      lower="-2.70"
+      upper="2.70"
+      effort="17"
+      velocity="40" />
+    <safety_controller
+      soft_lower_limit="-2.70"
+      soft_upper_limit="2.70"
+      k_velocity="100"
+      k_position="1000" />
+  </joint>
+
+<link
+      name="fl_foot">
+      <xacro:dummy_inertial />
+      <collision>
+        <origin
+          xyz="0 0 0"
+          rpy="0 0 0" />
+        <geometry>
+          <sphere
+            radius="0.0195" />
+        </geometry>
+      </collision>
+    </link>
+  
+    <joint
+      name="fl_fixed_foot"
+      type="fixed">
+      <origin
+        xyz="0 0 -0.2"
+        rpy="0 0 0" />
+      <parent
+        link="fl_shin" />
+      <child
+        link="fl_foot" />
+    </joint>
+</robot>
