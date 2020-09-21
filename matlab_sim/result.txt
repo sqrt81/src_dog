@@ -1,0 +1,182 @@
+% 化简后的解析表达式
+
+s1 = sin(q1);
+c1 = cos(q1);
+s2 = sin(q2);
+c2 = cos(q2);
+s3 = sin(q3);
+c3 = cos(q3);
+s23 = sin(q2 + q3);
+c23 = cos(q2 + q3);
+
+thigh_z = hip_len_y*s1 + thigh_offset_z*c1*c2;
+thigh_y = hip_len_y*c1 - thigh_offset_z*c2*s1;
+shin_z = thigh_offset_z*c2 + shin_offset_z*c23;
+shin_x = thigh_offset_z*s2 + shin_offset_z*s23;
+
+thigh_c_y = com_thigh_y + hip_len_y;
+shin_c_z = thigh_offset_z*c2 + com_shin_z*c23;
+shin_c_x = thigh_offset_z*s2 + com_shin_z*s23;
+
+
+% c1*thigh_z - s1*thigh_y = c2*thigh_offset_z
+% c1*thigh_y + s1*thigh_z = hip_len_y;
+% thigh_z^2 + thigh_y^2 = hip_len_y^2 + thigh_offset_z^2*c2^2
+
+
+I2cross = I2yz - com_thigh_y*com_thigh_z*m_thigh;
+I2rot = I2xx/2 + I2yy/2 - I2zz/2 + com_thigh_z^2*m_thigh;
+I2center = I2yy/2 - I2xx/2 + I2zz/2;
+I3rot = I3xx/2 + I3yy/2 - I3zz/2 + com_shin_z^2*m_shin;
+I3center = I3yy/2 - I3xx/2 + I3zz/2;
+I3cross = m_shin*com_shin_z*hip_len_y;
+
+shin_iner = com_shin_z*m_shin*thigh_offset_z;
+
+%foot pos:
+hip_x + hip_len_x + shin_c_x;
+hip_y + hip_len_y*c1 - shin_z*s1;
+hip_len_y*s1 + shin_z*c1;
+
+%jacobian:
+0; 	- shin_offset_z*c1*c23 - thigh_z; 	- shin_offset_z*s1*c23 + thigh_y;
+shin_z; 	shin_x*s1; 	- c1*shin_x;
+shin_offset_z*c23; 	shin_offset_z*s1*s23; 	-shin_offset_z*c1*s23;
+
+%H matrix:
+H(1, 1): m_shin*(thigh_z^2 + thigh_y^2)
++ shin_iner*2*c23*c2
++ thigh_c_y^2*m_thigh + m_hip*com_hip_y^2
++ c23^2*I3rot + s23^2*I3center + s2^2*I2center + c2^2*I2rot
++ I2xx/2 - I2yy/2 + I2zz/2 + I3xx/2 - I3yy/2 + I3zz/2+ I1xx
+
+H(1, 2):
+- m_thigh*com_thigh_z*hip_len_y*s2 + I2cross*s2
+- m_shin*hip_len_y*shin_c_x
+
+H(1, 3):
+- s23*com_shin_z*m_shin*hip_len_y
+
+H(2, 1) = H(1, 2)
+
+H(2, 2):
+2*c3*m_shin*com_shin_z*thigh_offset_z
++ I2center + I3center + I2rot + I3rot
++ m_shin*thigh_offset_z*thigh_offset_z
+
+H(2, 3):
+I3rot + I3center + c3*shin_iner
+
+H(3, 1) = H(1, 3)
+
+H(3, 2) = H(2, 3)
+
+H(3, 3):
+I3rot + I3center
+
+C matrix:
+dC(1, 1)/dvq1: 0
+
+dC(1, 1)/dvq2:
+- (c2*s23 + s2*c23)*shin_iner
++ s23*c23*(I3center - I3rot)
++ c2*s2*(I2center - I2rot - m_shin*thigh_offset_z*thigh_offset_z)
+
+dC(1, 1)/dvq3:
+- s23*c2*shin_iner
++ s23*c23*(I3center - I3rot)
+
+dC(1, 2)/dvq1 = dC(1, 1)/dvq2
+
+dC(1, 2)/dvq2:
+- m_shin*hip_len_y*shin_c_z
++ c2*(I2cross - m_thigh*com_thigh_z*hip_len_y)
+
+dC(1, 2)/dvq3:
+- c23*com_shin_z*m_shin*hip_len_y
+
+dC(1, 3)/dvq1 = dC(1, 1)/dvq3
+
+dC(1, 3)/dvq2 = dC(1, 2)/dvq3
+
+dC(1, 3)/dvq3:
+- c23*com_shin_z*m_shin*hip_len_y
+
+dC(2, 1)/dvq1:
++ s23*c23*(I3rot - I3center)
++ s2*c2*(I2rot - I2center + m_shin*thigh_offset_z*thigh_offset_z)
++ shin_iner*(s2*c23 + c2*s23)
+
+dC(2, 1)/dvq2: 0
+
+dC(2, 1)/dvq3: 0
+
+dC(2, 2)/dvq1: 0
+
+dC(2, 2)/dvq2: 0
+
+dC(2, 2)/dvq3:
+- shin_iner*s3
+
+dC(2, 3)/dvq1: 0
+
+dC(2, 3)/dvq2 = dC(2, 2)/dvq3
+
+dC(2, 3)/dvq3:
+- shin_iner*s3
+
+dC(3, 1)/dvq1:
+c2*s23*m_shin*com_shin_z*thigh_offset_z
++ s23*c23*(I3rot - I3center)
+
+dC(3, 1)/dvq2: 0
+
+dC(3, 1)/dvq3: 0
+
+dC(3, 2)/dvq1 = dC(3, 1)/dvq2
+
+dC(3, 2)/dvq2:
++ shin_iner*s3
+
+dC(3, 2)/dvq3: 0
+
+dC(3, 3)/dvq1: 0
+
+dC(3, 3)/dvq2: dC(3, 2)/dvq3
+
+dC(3, 3)/dvq3: 0
+
+
+G matrix:
+G(1, 1): 0
+
+G(1, 2):
++ com_hip_y*m_hip*s1
++ m_thigh*com_thigh_z*c1*c2
++ m_thigh*thigh_c_y*s1
++ m_shin*(com_shin_z*c1*c23 + thigh_z)
+
+G(1, 3):
+- com_hip_y*m_hip*c1
++ m_thigh*c2*s1*com_thigh_z
+- m_thigh*c1*thigh_c_y
++ m_shin*(com_shin_z*s1*c23 - thigh_y)
+
+G(2, 1):
+- com_thigh_z*m_thigh*c2
+- m_shin*shin_c_z
+
+G(2, 2):
+- s1*m_shin*shin_c_x
+- com_thigh_z*m_thigh*s1*s2
+
+G(2, 3):
++ com_thigh_z*m_thigh*c1*s2
++ c1*m_shin*shin_c_x
+
+G(3, 1): -com_shin_z*m_shin*c23
+
+G(3, 2): -com_shin_z*m_shin*s1*s23
+
+G(3, 3): com_shin_z*m_shin*c1*s23
+

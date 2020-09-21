@@ -23,14 +23,16 @@ end
 
 w_h = sin(q1_eval) * y_h - cos(q1_eval) * zt;
 leg_l_2 = x_h * x_h + w_h * w_h;
-angle_3 = acos((leg_l_2 - thigh_offset_z * thigh_offset_z - shin_offset_z * shin_offset_z) ...
- / 2 * thigh_offset_z * shin_offset_z);
+angle_3 = acos((leg_l_2 - thigh_offset_z * thigh_offset_z ...
+                - shin_offset_z * shin_offset_z) ...
+               / (2 * thigh_offset_z * shin_offset_z));
 
 if knee_out
-    q3_eval = angle_3
+    q3_eval = angle_3;
 else
-    q3_eval = - angle_3
+    q3_eval = - angle_3;
 end
 
-q2 = acos(w_h / sqrt(leg_l_2)) - asin(shin_offset_z * sin(q3_eval) / sqrt(leg_l_2))
+q2_eval = - atan2(x_h, w_h) ...
+          + asin(shin_offset_z * sin(q3_eval) / sqrt(leg_l_2));
 
