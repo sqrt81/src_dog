@@ -13,6 +13,7 @@ struct SingleJointState
 {
     double pos;
     double vel;
+    double acc;
     double eff; // effort applied by the joint
 };
 

@@ -15,4 +15,6 @@
 
 p.s.  
 感觉github的md语法好怪
+p.p.s.  
+化简动力学公式真的累死。。听说MMA的化简比matlab靠谱？
 
