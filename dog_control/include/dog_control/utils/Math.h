@@ -1,0 +1,35 @@
+#ifndef DOG_CONTROL_UTILS_MATH_H
+#define DOG_CONTROL_UTILS_MATH_H
+
+namespace dog_control
+{
+
+namespace utils
+{
+
+inline int round(const double _x)
+{
+    return static_cast<int>(_x + 0.5);
+}
+
+inline double square(const double _x)
+{
+    return _x * _x;
+}
+
+inline double clamp(const double _x, const double _lower, const double _upper)
+{
+    if(_x > _upper)
+        return _upper;
+
+    if(_x < _lower)
+        return _lower;
+
+    return _x;
+}
+
+} /* utils */
+
+} /* dog_control */
+
+#endif /* DOG_CONTROL_UTILS_MATH_H */

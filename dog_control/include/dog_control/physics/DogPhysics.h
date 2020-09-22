@@ -2,7 +2,7 @@
 #define DOG_CONTROL_PHYSICS_DOGPHYSICS_H
 
 #include "dog_control/utils/ParamDict.h"
-#include "JointState.h"
+#include "dog_control/message/JointState.h"
 
 #include <Eigen/Eigen>
 
@@ -11,7 +11,6 @@ namespace dog_control
 
 namespace physics
 {
-
 /**
  * @brief The DogPhysics class
  * This class computes all values relative to
@@ -21,6 +20,10 @@ namespace physics
  */
 class DogPhysics
 {
+private:
+    using JointState3 = message::JointState3;
+    using JointState3CRef = message::JointState3CRef;
+
 public:
     DogPhysics() = default;
 

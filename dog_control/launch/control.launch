@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <node name="dog_control" pkg="dog_control" type="dog_control_node"
+    output="screen" >
+    <remap from="/dog_control/imu" to="/dog/imu" />
+    <remap from="/dog_control/joint_state" to="/dog/joint_states" />
+    <remap from="/dog_control/joint_cmd" to="/dog/gazebo_pve_controller/command" />
+  </node>
+
+</launch>
+

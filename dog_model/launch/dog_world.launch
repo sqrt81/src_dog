@@ -47,3 +47,4 @@
     args=" -d $(find dog_model)/urdf.rviz" />
 
 </launch>
+

@@ -17,6 +17,23 @@ public:
     {
         l_state = luaL_newstate();
         luaL_openlibs(l_state);
+
+        // append current lua file path to lua path
+        const std::string file_path
+                = lua_file.substr(0, lua_file.rfind('/'));
+
+        /** add file location to lua search path
+         *  see https://stackoverflow.com/questions/4125971
+         */
+        lua_getglobal(l_state, "package");
+        lua_getfield(l_state, -1, "path");
+        std::string cur_path = lua_tostring(l_state, -1);
+        cur_path.append(";" + file_path + "/?.lua");
+        lua_pop(l_state, 1);
+        lua_pushstring(l_state, cur_path.c_str());
+        lua_setfield(l_state, -2, "path");
+        lua_pop(l_state, 1);
+
         file_ready = !luaL_dofile(l_state, lua_file.c_str());
     }
 
