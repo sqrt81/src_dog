@@ -2,21 +2,23 @@
 <robot
   xmlns:xacro="http://www.ros.org/wiki/xacro">
   
+  <xacro:arg name="hang_up" default="false" />
+  
   <!-- this joint is only for debugging/testing purpose -->
-  <!--
-  <link name="world" />
-  <joint
-    name="fixed_body"
-    type="fixed">
-    <origin
-      xyz="0 0 0.5"
-      rpy="0 0 0" />
-    <parent link="world" />
-    <child link="dummy" />
-    <axis xyz="0 0 1" />
-    <limit lower="-0.4" upper="0.1" effort="10000" velocity="1000" />
-  </joint>
-  -->
+  <xacro:if value="$(arg hang_up)" >
+    <link name="world" />
+    <joint
+      name="fixed_body"
+      type="fixed">
+      <origin
+        xyz="0 0 0.5"
+        rpy="0 0 0" />
+      <parent link="world" />
+      <child link="dummy" />
+      <!-- <axis xyz="0 0 1" /> -->
+      <!-- <limit lower="-0.4" upper="0.1" effort="10000" velocity="1000" /> -->
+    </joint>
+  </xacro:if>
   
   <link name="dummy" />
   <joint name="dummy_joint" type="fixed">
