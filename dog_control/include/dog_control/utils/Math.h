@@ -7,6 +7,11 @@ namespace dog_control
 namespace utils
 {
 
+inline double abs(double _x)
+{
+    return (_x < 0) ? (- _x) : _x;
+}
+
 inline int round(const double _x)
 {
     return static_cast<int>(_x + 0.5);

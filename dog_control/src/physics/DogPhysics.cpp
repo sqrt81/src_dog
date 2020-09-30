@@ -11,7 +11,8 @@ using std::atan2;
 #define READ_PARAM_OR_DIE(dict, param, ns) \
     do \
     { \
-        const utils::ParamDict::const_iterator iter = dict.find(#ns "/" #param);\
+        const utils::ParamDict::const_iterator iter \
+            = dict.find(#ns "/" #param); \
         assert(iter != dict.end()); \
         param ## _ = iter->second; \
     } \
@@ -132,6 +133,37 @@ Eigen::Matrix3d DogPhysics::ComputeJacobian(JointState3CRef joint_pos) const
     jacob(2, 2) = - shin_offset_z_ * c1 * s23;
 
     return jacob;
+}
+
+Eigen::Vector3d DogPhysics::ComputeFootVel(JointState3CRef joint_stat) const
+{
+    const Eigen::Matrix3d jacobian = ComputeJacobian(joint_stat);
+    const Eigen::Vector3d joint_vel(joint_stat[0].vel,
+                                    joint_stat[1].vel,
+                                    joint_stat[2].vel);
+
+    return jacobian * joint_vel;
+}
+
+void DogPhysics::ComputeJointVel(const Eigen::Vector3d &foot_vel,
+                                 JointState3 &joint_stat) const
+{
+    const Eigen::Matrix3d jacobian = ComputeJacobian(joint_stat);
+    Eigen::Vector3d joint_vel;
+
+    if(abs(jacobian.determinant()) < 1e-3)
+    {
+        joint_vel = (jacobian + Eigen::Matrix3d::Identity() * 1e-3).inverse()
+                * foot_vel;
+    }
+    else
+    {
+        joint_vel = jacobian.inverse() * foot_vel;
+    }
+
+    joint_stat[0].vel = joint_vel(0);
+    joint_stat[1].vel = joint_vel(1);
+    joint_stat[2].vel = joint_vel(2);
 }
 
 void DogPhysics::BuildDynamicsMatrixs(JointState3CRef joint_stat,

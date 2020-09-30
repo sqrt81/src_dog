@@ -14,6 +14,10 @@ namespace dog_control
 namespace hardware
 {
 
+/**
+ * @brief The SimulatedHardware class
+ * A class which interact with ros simulated robot.
+ */
 class SimulatedHardware : public HardwareBase
 {
 protected:

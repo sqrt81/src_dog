@@ -13,6 +13,12 @@ namespace dog_control
 namespace hardware
 {
 
+/**
+ * @brief The HardwareBase class
+ * This is the virtual basic class for hardware interface.
+ * All derived classes should implement functions which
+ * communicate with the hardware.
+ */
 class HardwareBase
 {
 protected:
@@ -27,6 +33,10 @@ public:
 
     virtual void Initialize(utils::ParamDictCRef dict) = 0;
 
+    /**
+     * @brief Spin
+     * A blocking, simple-event loop.
+     */
     virtual void Spin() = 0;
 
     virtual void PublishCommand(MotorCommandCRef command) const = 0;

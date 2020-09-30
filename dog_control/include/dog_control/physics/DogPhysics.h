@@ -33,18 +33,35 @@ public:
      * @brief ForwardKinematics
      * Given joint positions, this function
      * computes the FL foot position relative to torso.
-     * @param   joint_pos joint positions of front-left leg.
-     * @return  front-left foot position.
+     * @param   joint_pos   joint positions of front-left leg.
+     * @return  front-left  foot position.
      */
     Eigen::Vector3d ForwardKinematics(JointState3CRef joint_pos) const;
 
     /**
      * @brief ComputeJacobian
      * Computes joint jacobian.
-     * @param joint_pos joint position of front-left leg.
-     * @return jacobian matrix J that satisfies dpos = J * dq.
+     * @param joint_pos     joint position of front-left leg.
+     * @return jacobian     matrix J that satisfies dpos = J * dq.
      */
     Eigen::Matrix3d ComputeJacobian(JointState3CRef joint_pos) const;
+
+    /**
+     * @brief ComputeFootPos
+     * Computes foot vel according to jacobian
+     * @param joint_stat    joint pos and vel
+     * @return foot linear  velocity
+     */
+    Eigen::Vector3d ComputeFootVel(JointState3CRef joint_stat) const;
+
+    /**
+     * @brief ComputeJointVel
+     * Given joint pos and foot vel, computes joint vel.
+     * @param foot_vel      foot velocity
+     * @param joint_stat    provides joint pos and stores computed joint vel
+     */
+    void ComputeJointVel(const Eigen::Vector3d& foot_vel,
+                         JointState3& joint_stat) const;
 
     /**
      * @brief InverseKinematics
