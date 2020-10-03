@@ -4,6 +4,8 @@
 #include <vector>
 #include <Eigen/Eigen>
 
+#include "dog_control/message/ModelJointState.h"
+#include "SpatialProperties.h"
 #include "SpatialToolbox.h"
 
 namespace dog_control
@@ -16,50 +18,6 @@ namespace spatial
 {
 
 /**
- * @brief NodeDescription
- * A link, together with the joint connecting it with its parent,
- * are considered as a "node".
- */
-struct NodeDescription
-{
-    SMat inertia; // link's spatial inertia measured in joint frame
-
-    // describing the joint connecting this link to its parent
-    JointType joint_type;
-    SVec joint_axis;
-    // joint vel = joint_axis * vq
-
-    // Since the joint motion space and link inertia are measured
-    // in the same frame, the transform is always identity.
-    // However, the joint's position in parent link needs to be defined
-    SMat X_parent;
-};
-
-/**
- * @brief JointState
- * Position and velocity for all the joints
- */
-struct FloatingBaseJointState
-{
-    Eigen::Vector3d base_trans;
-    Eigen::Quaterniond base_rot;
-
-    // note that base velocity is measured in base frame,
-    // not in fixed base (global) frame
-    Eigen::Vector3d base_linear_vel;
-    Eigen::Vector3d base_rot_vel;
-
-    std::vector<double> q;
-    std::vector<double> dq;
-};
-
-struct EndEffectorInfo
-{
-    Eigen::Vector3d ee_local_pos;
-    int ee_link_id;
-};
-
-/**
  * @brief The FloatingBaseModel class
  * Describes a rigid-body tree with a floating base.
  * The described rigid-body tree should have all links
@@ -68,6 +26,11 @@ struct EndEffectorInfo
  */
 class FloatingBaseModel
 {
+protected:
+    using FBJS = message::FloatingBaseJointState;
+    using FBJSCRef = message::FBJSCRef;
+    using FBJSDCRef = message::FBJSDCRef;
+
 public:
     FloatingBaseModel() = default;
 
@@ -95,13 +58,19 @@ public:
      * Update position and velocity of each joints.
      * @param stat      joint states
      */
-    void SetJointMotionState(const FloatingBaseJointState& stat);
+    void SetJointMotionState(FBJSCRef stat);
 
     /**
      * @brief ForwardKinematics
-     * Compute forward kinematics of the body (if an update is needed)
+     * Compute forward kinematics of the body (if an update is needed).
+     * Transform, velocity and Coriolis acceleration
+     * of each link and rotor are computed in this method.
      */
     void ForwardKinematics();
+
+    Eigen::VectorXd BiasForces();
+
+    Eigen::MatrixXd MassMatrix();
 
     /**
      * @brief EEPos
@@ -131,8 +100,12 @@ private:
     std::vector<EndEffectorInfo> ee_info_;
 
     bool kinematics_updated_;
+    bool bias_force_updated_;
+    bool mass_matrix_updated_;
 
-    FloatingBaseJointState js_;
+    FBJS js_;
+
+//    SVec a_base_; // fixed base acceleration. Used as gravity.
 
     // Two points need to be made clear:
     // First, a mat X transform from base to link i means that,
@@ -143,7 +116,19 @@ private:
     // coordinate system which stays still with fix frame
     // while coincide with XXX frame's coordinate system at this moment.
     std::vector<SVec> v_; // spatial vel for link i (in its own frame)
+    std::vector<SMat> X_parent_; // transform matrix from parent to this link
     std::vector<SMat> X0_; // transform matrix from fixed base to link i
+    std::vector<SVec> a_C_; // Coriolis acceleration, caused by rotation
+
+    // Same properties for rotors.
+    std::vector<SVec> v_rot_;
+    std::vector<SMat> X_parent_rot_;
+    std::vector<SMat> X0_rot_;
+    std::vector<SVec> a_C_rot_;
+
+    // joint forces needed for zero q acceleration.
+    Eigen::VectorXd compensate_;
+    Eigen::MatrixXd mass_matrix_;
 };
 
 } /* spatial */

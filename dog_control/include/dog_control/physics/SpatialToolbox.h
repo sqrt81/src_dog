@@ -3,6 +3,8 @@
 
 #include <Eigen/Eigen>
 
+#include "SpatialProperties.h"
+
 namespace dog_control
 {
 
@@ -11,27 +13,6 @@ namespace physics
 
 namespace spatial
 {
-
-/**
- * Defines spatial vectors (SVec) and spatial matrix (SMat) here.
- * There are two types of spatial vectors: motion vector and force vector.
- * They are different in frame transform.
- * motion vector is a way of representing rigid body motion,
- * while force vector can be used to represent forces and torque
- * applied on a rigid body.
- * Such way of representation and many of its applications are discussed
- * in "Rigid Body Dynamics Algorithms" by Featherstone.
- * (download from
- * https://www.springer.com/us/book/9780387743141 on MIT internet)
- */
-using SVec = Eigen::Matrix<double, 6, 1>;
-using SMat = Eigen::Matrix<double, 6, 6>;
-
-enum JointType
-{
-    floating = 0,
-    revolute = 1
-};
 
 /**
  * @brief ToLowerMatrix
@@ -45,6 +26,21 @@ Eigen::Matrix3d ToLowerMatrix(const Eigen::Vector3d& upper_vec);
  * Inverse function of "ToLowerMatrix"
  */
 Eigen::Vector3d ToUpperVector(const Eigen::Matrix3d& lower_mat);
+
+/**
+ * @brief MotionCrossProduct
+ * Motion vector cross product function, copied from MIT cheetah code.
+ * Returns a x b. SVec b should be a motion vector.
+ */
+SVec MotionCrossProduct(const SVec& a, const SVec& b);
+
+/**
+ * @brief ForceCrossProduct
+ * Force vector cross product function, copied from MIT cheetah code.
+ * Returns a x* b. SVec b should be a force vector.
+ */
+SVec ForceCrossProduct(const SVec& a, const SVec& b);
+
 
 /**
  * @brief BuildInertia
