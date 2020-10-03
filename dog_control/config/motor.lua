@@ -1,7 +1,8 @@
 MOTOR_CONFIG = {
   friction = 0.09,
   damping = 0.04,
-  vel_deadband = 0.01
+  vel_deadband = 0.01,
+  gear_ratio = 6.0
 }
 
 MOTOR_NAME = {

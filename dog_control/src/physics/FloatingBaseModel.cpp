@@ -124,18 +124,35 @@ Eigen::VectorXd FloatingBaseModel::BiasForces()
     std::vector<SVec> link_forces(node_cnt, SVec::Zero());
     compensate_.resize(node_cnt + 5);
 
+    // a_cor_total[i] is the total Coriolis acceleration of link i,
+    // expressed in its own frame.
+    // So that Coriolis acceleration of rotor i is
+    // X_parent_rot_[i] * a_cor_total[parent_[i]] + a_C_rot_[i].
+    std::vector<SVec> a_cor_total(node_cnt);
+    a_cor_total[0] = SVec::Zero();
+
+    for(size_t i = 1; i < node_cnt; i++)
+    {
+        a_cor_total[i]
+                = X_parent_[i] * a_cor_total[parent_[i]] + a_C_[i];
+    }
+
     for(size_t i = node_cnt - 1; i > 0; i--)
     {
         const NodeDescription& nd = node_description_[i];
         SVec momentum = nd.inertia * v_[i];
-        link_forces[i] += ForceCrossProduct(v_[i], momentum);
+        link_forces[i] += nd.inertia * a_cor_total[i]
+                          + ForceCrossProduct(v_[i], momentum);
 
         momentum = nd.rotor_inertia * v_rot_[i];
-        const SVec rot_force = ForceCrossProduct(v_rot_[i], momentum);
+        const SVec rot_force
+                = nd.rotor_inertia
+                  * (X_parent_rot_[i] * a_cor_total[parent_[i]] + a_C_rot_[i])
+                  + ForceCrossProduct(v_rot_[i], momentum);
 
         link_forces[parent_[i]]
-                += X_parent_[i].transpose() * link_forces[i]
-                + X_parent_rot_[i].transpose() * rot_force;
+                += (X_parent_[i].transpose() * link_forces[i]
+                    + X_parent_rot_[i].transpose() * rot_force);
 
         compensate_(i + 5) = (link_forces[i] + rot_force * nd.gear_ratio)
                              .dot(nd.joint_axis);
@@ -145,7 +162,8 @@ Eigen::VectorXd FloatingBaseModel::BiasForces()
         const NodeDescription& nd = node_description_[0];
         SVec& base_force = link_forces[0];
         SVec momentum = nd.inertia * v_[0];
-        base_force += ForceCrossProduct(v_[0], momentum);
+        base_force += nd.inertia * a_C_[0]
+                      + ForceCrossProduct(v_[0], momentum);
 
         compensate_.topRows<6>() = base_force;
     }
@@ -188,13 +206,16 @@ Eigen::MatrixXd FloatingBaseModel::MassMatrix()
 
         for(size_t j = i; j != 0;)
         {
+            // Note that spatial force f_i is expressed in frame parent_[j].
+            // So in order to find the force needed for joint[parent_[j]],
+            // we needs joint_axis[parent_[j]] * f_i.
             const int parent = parent_[j];
             mass_matrix_(parent + 5, i + 5)
-                    = node_description_[j].joint_axis.dot(f_i);
+                    = node_description_[parent].joint_axis.dot(f_i);
             mass_matrix_(i + 5, parent + 5) = mass_matrix_(parent + 5, i + 5);
 
+            f_i = X_parent_[parent].transpose() * f_i;
             j = parent;
-            f_i = X_parent_[j].transpose() * f_i;
         }
 
         mass_matrix_.block<6, 1>(0, i + 5) = f_i;
@@ -202,10 +223,10 @@ Eigen::MatrixXd FloatingBaseModel::MassMatrix()
 
         // backward propagation of tree inertia
         tree_inertia[parent_[i]]
-                += X_parent_[i].transpose() * tree_inertia[i] * X_parent_[i]
+                += (X_parent_[i].transpose() * tree_inertia[i] * X_parent_[i]
                 + X_parent_rot_[i].transpose()
                 * node_description_[i].rotor_inertia
-                * X_parent_rot_[i];
+                * X_parent_rot_[i]);
     }
 
     mass_matrix_.topLeftCorner<6, 6>() = tree_inertia[0];
@@ -246,6 +267,8 @@ void FloatingBaseModel::DemoInfo()
                   << X0_[i] << std::endl;
         std::cout << "vel: " << std::endl
                   << v_[i] << std::endl;
+        std::cout << "inertia: " << std::endl
+                  << node_description_[i].inertia << std::endl;
     }
 }
 

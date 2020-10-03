@@ -68,8 +68,25 @@ public:
      */
     void ForwardKinematics();
 
+    /**
+     * @brief BiasForces
+     * Compute spatial forces (on torso) and joint torque needed
+     * for keeping current joint velocity (and torso velocity).
+     * @return          vector C with (6 + joint_cnt) elements
+     */
     Eigen::VectorXd BiasForces();
 
+    /**
+     * @brief MassMatrix
+     * Mass matrix H shows the relationship between
+     * (torso & joint) acceleration and joint torque.
+     * Specifically speaking, H(i, j) is the required force / torque
+     * for joint i,
+     * if we want j to have unit acceleration while keeping
+     * other joints moving with no acceleration.
+     * Note that the matrix H is symmetric.
+     * @return          (6 + joint_cnt) x (6 + joint_cnt) mass matrix H
+     */
     Eigen::MatrixXd MassMatrix();
 
     /**
@@ -94,7 +111,7 @@ public:
      */
     void DemoInfo();
 
-private:
+protected:
     std::vector<NodeDescription> node_description_;
     std::vector<int> parent_;
     std::vector<EndEffectorInfo> ee_info_;
@@ -122,7 +139,7 @@ private:
 
     // Same properties for rotors.
     std::vector<SVec> v_rot_;
-    std::vector<SMat> X_parent_rot_;
+    std::vector<SMat> X_parent_rot_; // transform from parent link to rotor
     std::vector<SMat> X0_rot_;
     std::vector<SVec> a_C_rot_;
 

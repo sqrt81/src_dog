@@ -18,6 +18,10 @@ namespace utils
  * options = {
  *   opt1 = 0.1,
  *   opt2 = 0.2,
+ *   ns1 = {
+ *     opt3_in_ns1 = 0.3,
+ *     opt4_in_ns1 = 0.4,
+ *   },
  *   ...
  * }
  * @param lua_file file name
