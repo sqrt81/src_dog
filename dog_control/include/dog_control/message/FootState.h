@@ -19,20 +19,17 @@ struct FootState
 
 using FootStateCRef = const FootState&;
 
-struct FootConfiguration
+struct LegConfiguration
 {
     LegName foot_name;
 
     double kp;
     double kd;
 
-    /**
-     * foot_force is the reaction force that ground applies to this foot.
-     */
-    Eigen::Vector3d foot_force;
+    Eigen::Vector3d joint_forces;
 };
 
-using FootConfigCRef = const FootConfiguration&;
+using LegConfigCRef = const LegConfiguration&;
 
 } /* message */
 

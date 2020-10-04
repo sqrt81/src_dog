@@ -1,14 +1,14 @@
 #include "dog_control/physics/DogModel.h"
-#include "dog_control/message/ModelJointState.h"
+#include "dog_control/hardware/SimulatedHardware.h"
+#include "dog_control/estimator/CheaterEstimator.h"
+#include "dog_control/control/FootPosController.h"
 #include "dog_control/utils/Initializer.h"
-#include "dog_control/physics/DogPhysics.h"
 
 #include <ros/ros.h>
 
 #include <iostream>
 
 using namespace dog_control;
-using namespace physics;
 
 int main(int argc, char** argv)
 {
@@ -18,80 +18,63 @@ int main(int argc, char** argv)
 
     utils::ParamDict dict = utils::BuildParamDict(config_file);
 
-    DogPhysics phys;
-    phys.Initialize(dict);
+    boost::shared_ptr<physics::DogModel> model(new physics::DogModel());
+    boost::shared_ptr<hardware::HardwareBase> hw(new hardware::SimulatedHardware());
+    boost::shared_ptr<estimator::EstimatorBase> estimator(new estimator::CheaterEstimator());
+    boost::shared_ptr<control::FootPosController> controller(new control::FootPosController());
 
-    spatial::FloatingBaseModel dog_model = BuildDogModel(dict);
-    message::FloatingBaseJointState js;
-    js.base_trans = Eigen::Vector3d(0, 0, 0);
-    js.base_rot = Eigen::Quaterniond(1, 0, 0, 0);
-    js.base_linear_vel = Eigen::Vector3d(0, 0, 0);
-    js.base_rot_vel = Eigen::Vector3d(0, 0, 10);
-    js.q.resize(12, 0.);
-    js.dq.resize(12, 0.);
+    model->Initialize(dict);
+    hw->Initialize(dict);
+    controller->Initialize(dict);
 
-    message::JointState3 js3;
-//    phys.InverseKinematics(Eigen::Vector3d(0.25, 0.1, -0.3), js3, true, true);
-//    phys.ComputeJointVel(Eigen::Vector3d(2, 3, 1.), js3);
-    js3[0].pos = 0;
-    js3[1].pos = 0;
-    js3[2].pos = 0;
-    js3[0].vel = 0;
-    js3[1].vel = 0;
-    js3[2].vel = 0;
-    js.q[0] = js3[0].pos;
-    js.q[1] = js3[1].pos;
-    js.q[2] = js3[2].pos;
-    js.q[3] = js3[0].pos;
-    js.q[4] = js3[1].pos;
-    js.q[5] = js3[2].pos;
-    js.q[6] = js3[0].pos;
-    js.q[7] = js3[1].pos;
-    js.q[8] = js3[2].pos;
-    js.q[9] = js3[0].pos;
-    js.q[10] = js3[1].pos;
-    js.q[11] = js3[2].pos;
+    model->ConnectHardware(hw);
+    model->ConnectEstimator(estimator);
+    estimator->ConnectHardware(hw);
+    estimator->ConnectModel(model);
+    controller->ConnectHardware(hw);
+    controller->ConnectModel(model);
 
-    js.dq[0] = js3[0].vel;
-    js.dq[1] = js3[1].vel;
-    js.dq[2] = js3[2].vel;
-    js.dq[3] = js3[0].vel;
-    js.dq[4] = js3[1].vel;
-    js.dq[5] = js3[2].vel;
-    js.dq[6] = js3[0].vel;
-    js.dq[7] = js3[1].vel;
-    js.dq[8] = js3[2].vel;
-    js.dq[9] = js3[0].vel;
-    js.dq[10] = js3[1].vel;
-    js.dq[11] = js3[2].vel;
+    // spin once to update hardware
+    ros::spinOnce();
 
-    dog_model.SetJointMotionState(js);
-    dog_model.ForwardKinematics();
+    estimator->Update();
+    model->Update();
+    controller->Update();
+
+    message::LegConfiguration conf;
+    conf.kd = 1;
+    conf.kp = 100;
+    conf.joint_forces = Eigen::Vector3d::Zero();
 
     for(int i = 0; i < 4; i++)
     {
-        std::cout << "foot pos " << i << " : "
-                  << dog_model.EEPos(i).transpose() << std::endl
-                  << "foot vel " << i << " : "
-                  << dog_model.EEVel(i).transpose() << std::endl;
+        conf.foot_name = static_cast<message::LegName>(i);
+        controller->ChangeFootControlMethod(conf);
     }
 
-    std::cout << "matrix by fb model: " << std::endl
-              << dog_model.MassMatrix().block<6, 6>(0, 0) << std::endl;
+    std::cout << "initialized." << std::endl;
 
-    Eigen::Matrix3d H, C, G;
-    phys.BuildDynamicsMatrixs(js3, H, C, G);
+    while(ros::ok())
+    {
+        for(int i = 0; i < 4; i++)
+        {
+            message::FootState fs;
+            fs.foot_name = static_cast<message::LegName>(i);
+            fs.pos = {0.25 * (i < 2      ? 1 : - 1),
+                      0.10 * (i % 2 == 0 ? 1 : - 1),
+                      0};
+            fs.vel = Eigen::Vector3d::Zero();
+            controller->SetFootStateCmd(fs);
+        }
 
-    std::cout << "matrix by physics: " << std::endl
-              << H << std::endl;
+        ros::spinOnce();
 
-    std::cout << "bias by fb model: " << std::endl
-              << (dog_model.BiasForces()).transpose()
-              << std::endl;
-//    std::cout << "bias by physics: " << std::endl
-//              << (C * Eigen::Vector3d(js3[0].vel, js3[1].vel, js3[2].vel)
-//                 + G * Eigen::Vector3d(- 9.8, 0, 0))
-//                 .transpose() << std::endl;
+        estimator->Update();
+        model->Update();
+        controller->Update();
+
+        ros::Duration(0.001).sleep();
+    }
 
     return 0;
 }

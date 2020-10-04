@@ -1,7 +1,7 @@
 #include "dog_control/hardware/SimulatedHardware.h"
 #include "dog_control/utils/Math.h"
 
-#include "eigen_conversions/eigen_msg.h"
+#include <eigen_conversions/eigen_msg.h>
 
 namespace dog_control
 {

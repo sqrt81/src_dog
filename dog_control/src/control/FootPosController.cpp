@@ -29,20 +29,20 @@ void FootPosController::ConnectHardware(
     hw_ptr_ = hw;
 }
 
-void FootPosController::ConnectPhysics(
-        boost::shared_ptr<physics::DogPhysics> phys)
+void FootPosController::ConnectModel(
+        boost::shared_ptr<physics::DogModel> model)
 {
-    phys_ptr_ = phys;
+    model_ptr_ = model;
 }
 
-void FootPosController::ChangeFootControlMethod(FootConfigCRef config)
+void FootPosController::ChangeFootControlMethod(LegConfigCRef config)
 {
     assert(VALID_LEGNAME(config.foot_name));
 
     config_[config.foot_name] = config;
 }
 
-void FootPosController::SetFootState(FootStateCRef foot_state)
+void FootPosController::SetFootStateCmd(FootStateCRef foot_state)
 {
     assert(VALID_LEGNAME(foot_state.foot_name));
 
@@ -60,28 +60,63 @@ message::FootState FootPosController::GetFootState(
 void FootPosController::Update()
 {
     boost::shared_ptr<hardware::HardwareBase> hw = hw_ptr_.lock();
-    boost::shared_ptr<physics::DogPhysics> phys = phys_ptr_.lock();
+    boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
 
     assert(hw);
-    assert(phys);
+    assert(model);
 
-    // compute real stat according to joint states
-    message::StampedJointState js = hw->GetJointState();
+    // update foot position and velocity
+    for(unsigned int i = 0; i < 4; i++)
+    {
+        FootState& real_stat = real_footstate_[i];
+
+        real_stat.pos = model->FootPos(static_cast<message::LegName>(i));
+        real_stat.vel = model->FootVel(static_cast<message::LegName>(i));
+    }
+
+    // apply commands
+    message::MotorCommand cmd;
 
     for(unsigned int i = 0; i < 4; i++)
     {
-        message::JointState3 one_leg_stat;
-        FootState& real_stat = real_footstate_[i];
+        message::JointState3 leg_joint;
+        model->InverseKinematics(static_cast<message::LegName>(i),
+                                 cmd_footstate_[i].pos, leg_joint,
+                                 (i >= 2), true);
+        cmd[i * 3    ].x_desired = leg_joint[0].pos;
+        cmd[i * 3 + 1].x_desired = leg_joint[1].pos;
+        cmd[i * 3 + 2].x_desired = leg_joint[2].pos;
 
-        std::copy(js.joint_state.begin() + i * 3,
-                  js.joint_state.begin() + (i + 1) * 3,
-                  one_leg_stat.begin());
+        const Eigen::Matrix3d jacob
+                = model->JointJacob(static_cast<message::LegName>(i));
+        Eigen::Vector3d vel = cmd_footstate_[i].vel;
 
-        real_stat.pos = phys->ForwardKinematics(one_leg_stat);
-        real_stat.vel = phys->ComputeFootVel(one_leg_stat);
+        // avoid singularity
+        if(jacob.determinant() > 1e-6)
+            vel = jacob.inverse() * vel;
+        else
+            vel = (jacob + Eigen::Matrix3d::Identity() * 1e-2).inverse()
+                    * vel;
+
+        cmd[i * 3    ].v_desired = vel(0);
+        cmd[i * 3 + 1].v_desired = vel(1);
+        cmd[i * 3 + 2].v_desired = vel(2);
+
+        LegConfigCRef config = config_[i];
+
+        cmd[i * 3    ].kp = config.kp;
+        cmd[i * 3 + 1].kp = config.kp;
+        cmd[i * 3 + 2].kp = config.kp;
+        cmd[i * 3    ].kd = config.kd;
+        cmd[i * 3 + 1].kd = config.kd;
+        cmd[i * 3 + 2].kd = config.kd;
+
+        cmd[i * 3    ].torq = config.joint_forces(0);
+        cmd[i * 3 + 1].torq = config.joint_forces(1);
+        cmd[i * 3 + 2].torq = config.joint_forces(2);
     }
 
-
+    hw->PublishCommand(cmd);
 }
 
 } /* control */
