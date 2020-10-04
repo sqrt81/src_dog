@@ -50,7 +50,7 @@ private:
     std::vector<hardware_interface::JointHandle> joints_;
     std::vector<MotorCommand> joint_cmd_;
     std::vector<MotorState> joint_state_;
-    std::vector<std::array<double, 2>> joint_torque_limit_;
+    std::vector<double> joint_torque_limit_;
 };
 
 }

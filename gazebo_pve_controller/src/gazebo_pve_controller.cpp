@@ -108,8 +108,7 @@ bool GazeboPVEController::init(hardware_interface::EffortJointInterface *hw,
             return false;
         }
 
-        joint_torque_limit_.push_back({joint_urdf->limits->lower,
-                                       joint_urdf->limits->upper});
+        joint_torque_limit_.push_back(joint_urdf->limits->effort);
     }
 
     joint_cmd_.resize(joint_cnt_, {0., 0., 0., 0., 0.});
@@ -139,7 +138,7 @@ void GazeboPVEController::update(const ros::Time &time,
         hardware_interface::JointHandle& motor = joints_[i];
         const MotorCommand& motor_cmd = joint_cmd_[i];
         MotorState& motor_state = joint_state_[i];
-        const double* motor_limits = joint_torque_limit_[i].data();
+        const double motor_limit = joint_torque_limit_[i];
 
         const double actual_pos = motor.getPosition();
         const double actual_vel = motor.getVelocity();
@@ -150,8 +149,8 @@ void GazeboPVEController::update(const ros::Time &time,
                 clamp(pos_err * motor_cmd.kp
                       + vel_err * motor_cmd.kd
                       + motor_cmd.torque,
-                      motor_limits[0],
-                      motor_limits[1]);
+                      - motor_limit,
+                      motor_limit);
 
         motor_state.pos = actual_pos;
         motor_state.vel = actual_vel;
