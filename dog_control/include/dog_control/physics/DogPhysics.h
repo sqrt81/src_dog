@@ -34,7 +34,7 @@ public:
      * Given joint positions, this function
      * computes the FL foot position relative to torso.
      * @param   joint_pos   joint positions of front-left leg.
-     * @return  front-left  foot position.
+     * @return              front-left foot position.
      */
     Eigen::Vector3d ForwardKinematics(JointState3CRef joint_pos) const;
 
@@ -42,7 +42,7 @@ public:
      * @brief ComputeJacobian
      * Computes joint jacobian.
      * @param joint_pos     joint position of front-left leg.
-     * @return jacobian     matrix J that satisfies dpos = J * dq.
+     * @return              matrix J that satisfies dpos = J * dq.
      */
     Eigen::Matrix3d ComputeJacobian(JointState3CRef joint_pos) const;
 
@@ -50,7 +50,7 @@ public:
      * @brief ComputeFootPos
      * Computes foot vel according to jacobian
      * @param joint_stat    joint pos and vel
-     * @return foot linear  velocity
+     * @return              foot linear velocity
      */
     Eigen::Vector3d ComputeFootVel(JointState3CRef joint_stat) const;
 
@@ -67,10 +67,10 @@ public:
      * @brief InverseKinematics
      * Computes desired joint positions of FL leg
      * with the target foot position.
-     * @param foot_pos  target foot position.
-     * @param joint_pos desired joint position.
-     * @param knee_out  if the knee curves outwards
-     * @param hip_out   if the thigh is at side of the torso
+     * @param foot_pos      target foot position.
+     * @param joint_pos     desired joint position.
+     * @param knee_out      if the knee curves outwards
+     * @param hip_out       if the thigh is at side of the torso
      */
     void InverseKinematics(const Eigen::Vector3d &foot_pos,
                            JointState3 &joint_pos,
@@ -94,9 +94,9 @@ public:
      * @brief ComputeTorque
      * Compute torque according to formula:
      * tau = H * acc + C * vel + G * gravity
-     * @param joint_stat pos, vel and acc of joints
-     * @param gravity gravity in front-left leg frame
-     * @return joint torque without friction compensation
+     * @param joint_stat    pos, vel and acc of joints
+     * @param gravity       gravity in front-left leg frame
+     * @return joint        torque without friction compensation
      */
     Eigen::Vector3d ComputeTorque(JointState3CRef joint_stat,
                                   const Eigen::Vector3d &gravity) const;
@@ -105,7 +105,7 @@ private:
     /**
      * @brief ComputeFriction Compute joint friction given its velocity
      * @param joint_stat states which contains velocity of joint(s)
-     * @return friction. When joint velocity > 0, friction < 0.
+     * @return              friction. When joint velocity > 0, friction < 0.
      */
     Eigen::Vector3d ComputeFriction(JointState3CRef joint_stat) const;
 

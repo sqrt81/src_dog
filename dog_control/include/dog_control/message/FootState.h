@@ -25,8 +25,6 @@ struct LegConfiguration
 
     double kp;
     double kd;
-
-    Eigen::Vector3d joint_forces;
 };
 
 using LegConfigCRef = const LegConfiguration&;

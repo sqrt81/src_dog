@@ -32,9 +32,9 @@ void CheaterEstimator::WriteResult(EstimatorResult &result) const
 
 void CheaterEstimator::CheatedMsgSub(const gazebo_msgs::ModelStates &msg)
 {
-    for(size_t i = 0; i < msg.name.size(); i++)
+    for (size_t i = 0; i < msg.name.size(); i++)
     {
-        if(msg.name[i] == "dog")
+        if (msg.name[i] == "dog")
         {
             tf::pointMsgToEigen(msg.pose[i].position, res_.position);
             tf::quaternionMsgToEigen(msg.pose[i].orientation,

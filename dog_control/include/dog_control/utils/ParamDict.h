@@ -10,6 +10,8 @@ namespace dog_control
 namespace utils
 {
 
+#define PARAM_WITH_NS(param, ns) #ns "/" #param
+
 typedef std::map<std::string, double> ParamDict;
 typedef const ParamDict& ParamDictCRef;
 

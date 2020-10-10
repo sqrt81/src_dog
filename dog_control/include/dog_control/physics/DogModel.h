@@ -16,8 +16,6 @@ namespace dog_control
 namespace physics
 {
 
-spatial::FloatingBaseModel BuildDogModel(utils::ParamDictCRef dict);
-
 class DogModel : protected spatial::FloatingBaseModel
 {
 protected:
@@ -32,24 +30,72 @@ public:
     void ConnectHardware(boost::shared_ptr<hardware::HardwareBase> hw);
     void ConnectEstimator(boost::shared_ptr<estimator::EstimatorBase> est);
 
-    void InverseKinematics(LegName leg_name,
-                           const Eigen::Vector3d &foot_pos,
-                           JointState3 &joint_pos,
+    /**
+     * @brief InverseKinematics
+     * Computes desired joint positions of leg joints to achieve
+     * the target foot position (in local frame).
+     * @param leg_name          the leg to compute
+     * @param foot_local_pos    foot position in torso's frame
+     * @param knee_out          if the knee curves outwards
+     * @param hip_out           if the thigh is at side of the torso
+     * @return                  desired joint position
+     */
+    Eigen::Vector3d InverseKinematics(LegName leg_name,
+                           const Eigen::Vector3d &foot_local_pos,
                            bool knee_out, bool hip_out) const;
+
+    /**
+     * @brief LocalJacob
+     * Compute joint jacobian in torso's frame (local frame).
+     * @param leg_name          the leg to compute
+     * @return                  matrix J that satisfies dpos = J * dq
+     */
+    Eigen::Matrix3d LocalJacob(LegName leg_name) const;
+
+    Eigen::Matrix3d ComputeJacobian(
+            LegName leg_name, const Eigen::Vector3d &joint_local_pos) const;
 
 //    using spatial::FloatingBaseModel::SetJointMotionState;
     using spatial::FloatingBaseModel::ForwardKinematics;
     using spatial::FloatingBaseModel::MassMatrix;
     using spatial::FloatingBaseModel::BiasForces;
 
+    message::FloatingBaseState TorsoState() const;
+
+    Eigen::VectorXd Vq() const;
+
+    /**
+     * @brief FootPos
+     * Compute global foot position.
+     * @param leg_name          the leg to compute
+     * @return                  global foot position
+     */
     Eigen::Vector3d FootPos(LegName leg_name);
 
+    /**
+     * @brief FootVel
+     * Compute global foot velocity.
+     * @param leg_name          the leg to compute
+     * @return                  global foot velocity
+     */
     Eigen::Vector3d FootVel(LegName leg_name);
 
-    Eigen::Matrix3d JointJacob(LegName leg_name);
-
+    /**
+     * @brief FullJacob
+     * Get the complete jacobian of a foot.
+     * The full jacobian matrix has a size of 3 x 18.
+     * @param leg_name          the leg to compute
+     * @return                  jacobian matrix.
+     */
     FullJacobMat FullJacob(LegName leg_name);
 
+    Eigen::Vector3d VJDotVq(LegName leg_name);
+
+    /**
+     * @brief Friction
+     * Compute joints' friction (with their velocity given)
+     * @return      friction. When joint velocity > 0, friction < 0.
+     */
     JointForce Friction() const;
 
     void Update();

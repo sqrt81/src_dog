@@ -1,4 +1,6 @@
 #include "dog_control/control/FootPosController.h"
+#include "dog_control/utils/Math.h"
+#include "dog_control/utils/MiniLog.h"
 
 #include <cassert>
 
@@ -9,12 +11,14 @@ namespace control
 
 FootPosController::FootPosController()
 {
-    for(unsigned int i = 0; i < 4; i++)
+    for (unsigned int i = 0; i < 4; i++)
     {
         cmd_footstate_[i].foot_name = static_cast<message::LegName>(i);
         real_footstate_[i].foot_name = static_cast<message::LegName>(i);
         config_[i].foot_name = static_cast<message::LegName>(i);
     }
+
+    cmd_forces_.setZero();
 }
 
 void FootPosController::Initialize(utils::ParamDictCRef dict)
@@ -35,6 +39,12 @@ void FootPosController::ConnectModel(
     model_ptr_ = model;
 }
 
+void FootPosController::SetPipelineData(
+        boost::shared_ptr<message::MotorCommand> cmd)
+{
+    cmd_ = cmd;
+}
+
 void FootPosController::ChangeFootControlMethod(LegConfigCRef config)
 {
     assert(VALID_LEGNAME(config.foot_name));
@@ -47,6 +57,11 @@ void FootPosController::SetFootStateCmd(FootStateCRef foot_state)
     assert(VALID_LEGNAME(foot_state.foot_name));
 
     cmd_footstate_[foot_state.foot_name] = foot_state;
+}
+
+void FootPosController::SetJointForceCmd(const JointForces &joint_forces)
+{
+    cmd_forces_ = joint_forces;
 }
 
 message::FootState FootPosController::GetFootState(
@@ -66,7 +81,7 @@ void FootPosController::Update()
     assert(model);
 
     // update foot position and velocity
-    for(unsigned int i = 0; i < 4; i++)
+    for (unsigned int i = 0; i < 4; i++)
     {
         FootState& real_stat = real_footstate_[i];
 
@@ -75,48 +90,52 @@ void FootPosController::Update()
     }
 
     // apply commands
-    message::MotorCommand cmd;
 
-    for(unsigned int i = 0; i < 4; i++)
+    for (unsigned int i = 0; i < 4; i++)
     {
-        message::JointState3 leg_joint;
-        model->InverseKinematics(static_cast<message::LegName>(i),
-                                 cmd_footstate_[i].pos, leg_joint,
-                                 (i >= 2), true);
-        cmd[i * 3    ].x_desired = leg_joint[0].pos;
-        cmd[i * 3 + 1].x_desired = leg_joint[1].pos;
-        cmd[i * 3 + 2].x_desired = leg_joint[2].pos;
+        message::SingleMotorCommand* offset_cmd = cmd_->data() + i * 3;
+        LegConfigCRef config = config_[i];
 
-        const Eigen::Matrix3d jacob
-                = model->JointJacob(static_cast<message::LegName>(i));
+        const Eigen::Vector3d leg_joint =
+                model->InverseKinematics(
+                    static_cast<message::LegName>(i),
+                    cmd_footstate_[i].pos, (i >= 2), true);
+        offset_cmd[0].x_desired = leg_joint(0);
+        offset_cmd[1].x_desired = leg_joint(1);
+        offset_cmd[2].x_desired = leg_joint(2);
+
+        const Eigen::Matrix3d jacob = model->ComputeJacobian(
+                    static_cast<message::LegName>(i), leg_joint);
         Eigen::Vector3d vel = cmd_footstate_[i].vel;
 
         // avoid singularity
-        if(jacob.determinant() > 1e-6)
+        if (utils::abs(jacob.determinant()) > 1e-3)
+        {
             vel = jacob.inverse() * vel;
+            offset_cmd[0].kd = config.kd;
+            offset_cmd[1].kd = config.kd;
+            offset_cmd[2].kd = config.kd;
+        }
         else
-            vel = (jacob + Eigen::Matrix3d::Identity() * 1e-2).inverse()
-                    * vel;
+        {
+            vel = Eigen::Vector3d::Zero();
+            offset_cmd[0].kd = 0;
+            offset_cmd[1].kd = 0;
+            offset_cmd[2].kd = 0;
+        }
 
-        cmd[i * 3    ].v_desired = vel(0);
-        cmd[i * 3 + 1].v_desired = vel(1);
-        cmd[i * 3 + 2].v_desired = vel(2);
+        offset_cmd[0].v_desired = vel(0);
+        offset_cmd[1].v_desired = vel(1);
+        offset_cmd[2].v_desired = vel(2);
 
-        LegConfigCRef config = config_[i];
+        offset_cmd[0].kp = config.kp;
+        offset_cmd[1].kp = config.kp;
+        offset_cmd[2].kp = config.kp;
 
-        cmd[i * 3    ].kp = config.kp;
-        cmd[i * 3 + 1].kp = config.kp;
-        cmd[i * 3 + 2].kp = config.kp;
-        cmd[i * 3    ].kd = config.kd;
-        cmd[i * 3 + 1].kd = config.kd;
-        cmd[i * 3 + 2].kd = config.kd;
-
-        cmd[i * 3    ].torq = config.joint_forces(0);
-        cmd[i * 3 + 1].torq = config.joint_forces(1);
-        cmd[i * 3 + 2].torq = config.joint_forces(2);
+        offset_cmd[0].torq = cmd_forces_(i * 3    );
+        offset_cmd[1].torq = cmd_forces_(i * 3 + 1);
+        offset_cmd[2].torq = cmd_forces_(i * 3 + 2);
     }
-
-    hw->PublishCommand(cmd);
 }
 
 } /* control */

@@ -72,6 +72,8 @@ public:
      * @brief BiasForces
      * Compute spatial forces (on torso) and joint torque needed
      * for keeping current joint velocity (and torso velocity).
+     * Note that gravity is excluded, since it can be modeled as
+     * floating base's linear acceleration.
      * @return          vector C with (6 + joint_cnt) elements
      */
     Eigen::VectorXd BiasForces();
@@ -135,7 +137,9 @@ protected:
     std::vector<SVec> v_; // spatial vel for link i (in its own frame)
     std::vector<SMat> X_parent_; // transform matrix from parent to this link
     std::vector<SMat> X0_; // transform matrix from fixed base to link i
+    std::vector<SMat> X0_inv_; // inverse of X0_
     std::vector<SVec> a_C_; // Coriolis acceleration, caused by rotation
+    std::vector<SVec> vJ_vq_; // dJ/dt * vq, used to calculated acceleration.
 
     // Same properties for rotors.
     std::vector<SVec> v_rot_;

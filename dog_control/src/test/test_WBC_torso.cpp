@@ -12,7 +12,7 @@
 
 using namespace dog_control;
 
-int main(int argc, char** argv)
+int test_WBC_torso(int argc, char** argv)
 {
     ros::init(argc, argv, "~");
     std::string config_file;

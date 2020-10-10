@@ -58,29 +58,33 @@ void FloatingBaseModel::SetJointMotionState(FBJSCRef stat)
 
 void FloatingBaseModel::ForwardKinematics()
 {
-    if(kinematics_updated_)
+    if (kinematics_updated_)
         return;
 
     const size_t node_cnt = node_description_.size();
     v_.resize(node_cnt);
     X_parent_.resize(node_cnt);
     X0_.resize(node_cnt);
+    X0_inv_.resize(node_cnt);
     a_C_.resize(node_cnt);
+    vJ_vq_.resize(node_cnt);
 
     v_rot_.resize(node_cnt);
     X_parent_rot_.resize(node_cnt);
     X0_rot_.resize(node_cnt);
     a_C_rot_.resize(node_cnt);
 
-    X0_[0] = BuildTransform(js_.base_trans, js_.base_rot);
+    X0_[0] = BuildTransform(js_.base.trans, js_.base.rot);
+    X0_inv_[0] = MotionTfInverse(X0_[0]);
     X_parent_[0] = X0_[0];
-    v_[0].topRows(3) = js_.base_rot_vel;
-    v_[0].bottomRows(3) = js_.base_linear_vel;
-    a_C_[0] = SVec::Zero();
-
+    v_[0].topRows(3) = js_.base.rot_vel;
+    v_[0].bottomRows(3) = js_.base.linear_vel;
     // a_C_[0] = v_[0] x v_joint = v_[0] x v_[0] = 0
+    a_C_[0] = SVec::Zero();
+    // vJ_vq_[0] = X0_inv_[0] * (v_[0] x v_[0]) = 0
+    vJ_vq_[0] = SVec::Zero();
 
-    for(size_t i = 1; i < node_cnt; i++)
+    for (size_t i = 1; i < node_cnt; i++)
     {
         const NodeDescription& nd = node_description_[i];
         // X0_[i] is the multiplication of three parts:
@@ -95,7 +99,9 @@ void FloatingBaseModel::ForwardKinematics()
 
         v_[i] = X_parent_[i] * v_[parent_[i]] + v_joint;
         X0_[i] = X_parent_[i] * X0_[parent_[i]];
+        X0_inv_[i] = MotionTfInverse(X0_[i]);
         a_C_[i] = MotionCrossProduct(v_[i], v_joint);
+        vJ_vq_[i] = vJ_vq_[parent_[i]] + X0_inv_[i] * a_C_[i];
 
         // X0_rot_[i] also have three components:
         // X0_[parent_[i]];
@@ -114,7 +120,7 @@ void FloatingBaseModel::ForwardKinematics()
 
 Eigen::VectorXd FloatingBaseModel::BiasForces()
 {
-    if(bias_force_updated_)
+    if (bias_force_updated_)
         return compensate_;
 
     ForwardKinematics();
@@ -131,13 +137,13 @@ Eigen::VectorXd FloatingBaseModel::BiasForces()
     std::vector<SVec> a_cor_total(node_cnt);
     a_cor_total[0] = SVec::Zero();
 
-    for(size_t i = 1; i < node_cnt; i++)
+    for (size_t i = 1; i < node_cnt; i++)
     {
         a_cor_total[i]
                 = X_parent_[i] * a_cor_total[parent_[i]] + a_C_[i];
     }
 
-    for(size_t i = node_cnt - 1; i > 0; i--)
+    for (size_t i = node_cnt - 1; i > 0; i--)
     {
         const NodeDescription& nd = node_description_[i];
         SVec momentum = nd.inertia * v_[i];
@@ -174,7 +180,7 @@ Eigen::VectorXd FloatingBaseModel::BiasForces()
 
 Eigen::MatrixXd FloatingBaseModel::MassMatrix()
 {
-    if(mass_matrix_updated_)
+    if (mass_matrix_updated_)
         return mass_matrix_;
 
     ForwardKinematics();
@@ -186,13 +192,13 @@ Eigen::MatrixXd FloatingBaseModel::MassMatrix()
     // This value is also named "composite inertia".
     std::vector<SMat> tree_inertia(node_cnt);
 
-    for(size_t i = 0; i < node_cnt; i++)
+    for (size_t i = 0; i < node_cnt; i++)
     {
         // tree root inertia
         tree_inertia[i] = node_description_[i].inertia;
     }
 
-    for(size_t i = node_cnt - 1; i > 0; i--)
+    for (size_t i = node_cnt - 1; i > 0; i--)
     {
         const NodeDescription& nd = node_description_[i];
         SVec f_i = tree_inertia[i] * nd.joint_axis;
@@ -204,7 +210,7 @@ Eigen::MatrixXd FloatingBaseModel::MassMatrix()
         f_i = X_parent_[i].transpose() * f_i
             + X_parent_rot_[i].transpose() * f_rot_i;
 
-        for(size_t j = i; j != 0;)
+        for (size_t j = i; j != 0;)
         {
             // Note that spatial force f_i is expressed in frame parent_[j].
             // So in order to find the force needed for joint[parent_[j]],
@@ -241,8 +247,7 @@ Eigen::Vector3d FloatingBaseModel::EEPos(int ee_id) const
 
     const EndEffectorInfo& ee = ee_info_[ee_id];
 
-    return PointTf(MotionTfInverse(X0_[ee.ee_link_id]),
-                   ee.ee_local_pos);
+    return PointTf(X0_inv_[ee.ee_link_id], ee.ee_local_pos);
 }
 
 Eigen::Vector3d FloatingBaseModel::EEVel(int ee_id) const
@@ -251,7 +256,7 @@ Eigen::Vector3d FloatingBaseModel::EEVel(int ee_id) const
 
     const EndEffectorInfo& ee = ee_info_[ee_id];
 
-    return X0_[ee.ee_link_id].topLeftCorner(3, 3).transpose()
+    return X0_inv_[ee.ee_link_id].topLeftCorner(3, 3)
             * LinearVel(v_[ee.ee_link_id], ee.ee_local_pos);
 }
 
@@ -259,7 +264,7 @@ void FloatingBaseModel::DemoInfo()
 {
     std::cout << "floating base info" << std::endl;
 
-    for(size_t i = 0; i < node_description_.size(); i++)
+    for (size_t i = 0; i < node_description_.size(); i++)
     {
         std::cout << "--------------------------------" << std::endl;
         std::cout << "link " << i + 1 << std::endl;

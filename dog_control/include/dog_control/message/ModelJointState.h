@@ -10,6 +10,19 @@ namespace dog_control
 namespace message
 {
 
+struct FloatingBaseState
+{
+    Eigen::Vector3d trans;
+    Eigen::Quaterniond rot;
+
+    // note that base velocity is measured in base frame,
+    // not in fixed base (global) frame
+    Eigen::Vector3d linear_vel;
+    Eigen::Vector3d rot_vel;
+};
+
+using FBStateCRef = const FloatingBaseState&;
+
 /**
  * @brief JointState
  * Position and velocity for all the joints.
@@ -17,13 +30,7 @@ namespace message
  */
 struct FloatingBaseJointState
 {
-    Eigen::Vector3d base_trans;
-    Eigen::Quaterniond base_rot;
-
-    // note that base velocity is measured in base frame,
-    // not in fixed base (global) frame
-    Eigen::Vector3d base_linear_vel;
-    Eigen::Vector3d base_rot_vel;
+    FloatingBaseState base;
 
     std::vector<double> q;
     std::vector<double> dq;

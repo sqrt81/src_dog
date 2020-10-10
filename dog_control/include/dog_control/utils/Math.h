@@ -24,10 +24,10 @@ inline double square(const double _x)
 
 inline double clamp(const double _x, const double _lower, const double _upper)
 {
-    if(_x > _upper)
+    if (_x > _upper)
         return _upper;
 
-    if(_x < _lower)
+    if (_x < _lower)
         return _lower;
 
     return _x;

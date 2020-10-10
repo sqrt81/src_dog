@@ -5,11 +5,13 @@ PHYSICS = {
   hip_len_y = 0.0575,
   thigh_offset_z = - 0.2,
   shin_offset_z = - 0.2,
+  
   com_hip_x = 0.050160,
   com_hip_y = - 0.013329,
   com_thigh_y = 29.693E-3,
   com_thigh_z = - 13.531E-3,
   com_shin_z = - 93.811E-3,
+  
   torso_mass = 3.575,
   hip_mass = 0.650,
   thigh_mass = 0.863,
@@ -27,5 +29,7 @@ PHYSICS = {
   I3xx = 827.276E-6,
   I3yy = 834.282E-6,
   I3zz = 15.950E-6,
+  
+  ground_friction = 0.5,
 }
 

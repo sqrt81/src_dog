@@ -4,6 +4,7 @@
 #include "dog_control/hardware/HardwareBase.h"
 #include "dog_control/physics/DogModel.h"
 #include "dog_control/message/FootState.h"
+#include "dog_control/message/MotorCommand.h"
 #include "dog_control/utils/Initializer.h"
 
 #include <array>
@@ -22,6 +23,7 @@ protected:
     using LegConfiguration = message::LegConfiguration;
     using FootStateCRef = message::FootStateCRef;
     using LegConfigCRef = message::LegConfigCRef;
+    using JointForces = Eigen::Matrix<double, 12, 1>;
 
 public:
     FootPosController();
@@ -31,9 +33,13 @@ public:
     void ConnectHardware(boost::shared_ptr<hardware::HardwareBase> hw);
     void ConnectModel(boost::shared_ptr<physics::DogModel> model);
 
+    void SetPipelineData(boost::shared_ptr<message::MotorCommand> cmd);
+
     void ChangeFootControlMethod(LegConfigCRef config);
 
     void SetFootStateCmd(FootStateCRef foot_state);
+
+    void SetJointForceCmd(const JointForces& joint_forces);
 
     FootState GetFootState(message::LegName foot_name) const;
 
@@ -43,7 +49,10 @@ private:
     boost::weak_ptr<physics::DogModel> model_ptr_;
     boost::weak_ptr<hardware::HardwareBase> hw_ptr_;
 
+    boost::shared_ptr<message::MotorCommand> cmd_;
+
     std::array<FootState, 4> cmd_footstate_;
+    JointForces cmd_forces_;
     std::array<FootState, 4> real_footstate_;
 
     std::array<LegConfiguration, 4> config_;

@@ -151,7 +151,7 @@ void DogPhysics::ComputeJointVel(const Eigen::Vector3d &foot_vel,
     const Eigen::Matrix3d jacobian = ComputeJacobian(joint_stat);
     Eigen::Vector3d joint_vel;
 
-    if(abs(jacobian.determinant()) < 1e-3)
+    if (abs(jacobian.determinant()) < 1e-3)
     {
         joint_vel = (jacobian + Eigen::Matrix3d::Identity() * 1e-3).inverse()
                 * foot_vel;
@@ -318,13 +318,13 @@ Eigen::Vector3d DogPhysics::ComputeFriction(JointState3CRef joint_stat) const
 {
     Eigen::Vector3d f;
 
-    for(int i = 0; i < 3; i++)
+    for (int i = 0; i < 3; i++)
     {
         const double vel = joint_stat[i].vel;
 
-        if(vel > vel_deadband_)
+        if (vel > vel_deadband_)
             f(i) = - friction_ - vel * damping_;
-        else if(vel < - vel_deadband_)
+        else if (vel < - vel_deadband_)
             f(i) = friction_ - vel * vel_deadband_;
         else
             f(i) = - vel * damping_;

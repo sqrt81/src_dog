@@ -34,13 +34,13 @@ void SimulatedHardware::Initialize(utils::ParamDictCRef dict)
     const std::string ns_name = std::string("motor_name/");
     const int ns_len = ns_name.size();
 
-    for(const std::pair<std::string, double>& iter : dict)
+    for (const std::pair<std::string, double>& iter : dict)
     {
-        if(iter.first.substr(0, ns_len) == ns_name)
+        if (iter.first.substr(0, ns_len) == ns_name)
         {
             const std::string motor_name = iter.first.substr(ns_len);
 
-            if(motor_name.find('/') == std::string::npos)
+            if (motor_name.find('/') == std::string::npos)
             {
                 // the motor_name does not contains a sub-namespace name
                 motor_index_.insert(std::make_pair(
@@ -61,7 +61,7 @@ void SimulatedHardware::PublishCommand(MotorCommandCRef command) const
     std_msgs::Float64MultiArray cmd_array;
     cmd_array.data.resize(60);
 
-    for(unsigned int i = 0; i < 12; i++)
+    for (unsigned int i = 0; i < 12; i++)
     {
         cmd_array.data[     i] = command[i].x_desired;
         cmd_array.data[12 + i] = command[i].kp;
@@ -87,7 +87,7 @@ void SimulatedHardware::JointStateCb(sensor_msgs::JointStateConstPtr js)
 {
     joint_state_.stamp = js->header.stamp.toSec();
 
-    if(js->name.size() != 12
+    if (js->name.size() != 12
             || js->position.size() != 12
             || js->velocity.size() != 12
             || js->effort.size() != 12)
@@ -96,11 +96,11 @@ void SimulatedHardware::JointStateCb(sensor_msgs::JointStateConstPtr js)
         return;
     }
 
-    for(unsigned int i = 0; i < 12; i++)
+    for (unsigned int i = 0; i < 12; i++)
     {
         const auto iter = motor_index_.find(js->name[i]);
 
-        if(iter == motor_index_.end())
+        if (iter == motor_index_.end())
         {
             ROS_ERROR("Simulated Hardware: unknown joint name : %s",
                       js->name[i].c_str());

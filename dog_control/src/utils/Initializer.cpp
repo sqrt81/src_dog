@@ -39,7 +39,7 @@ public:
 
     ~LuaReader()
     {
-        if(file_ready)
+        if (file_ready)
             lua_close(l_state);
     }
 
@@ -56,13 +56,13 @@ ParamDict LuaReader::ReadALL() const
 {
     ParamDict params;
 
-    if(!file_ready)
+    if (!file_ready)
         return params;
 
     // Assume all options are inside a table named "options"
     lua_getglobal(l_state, "options");
 
-    if(lua_istable(l_state, -1))
+    if (lua_istable(l_state, -1))
     {
         ReadWithNamespace(params, "");
     }
@@ -79,17 +79,17 @@ void LuaReader::ReadWithNamespace(ParamDict &params, const std::string &ns) cons
     {
         // index -2 --> key
         // index -1 --> value
-        if(lua_isstring(l_state, -2))
+        if (lua_isstring(l_state, -2))
         {
             const std::string key
                     = ns + lua_tostring(l_state, -2);
 
-            if(lua_isnumber(l_state, -1))
+            if (lua_isnumber(l_state, -1))
             {
                 double value = lua_tonumber(l_state, -1);
                 params.insert(std::make_pair(key, value));
             }
-            else if(lua_istable(l_state, -1))
+            else if (lua_istable(l_state, -1))
             {
                 ReadWithNamespace(params, key + "/");
             }
