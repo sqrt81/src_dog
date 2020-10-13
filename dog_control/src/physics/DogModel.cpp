@@ -1,5 +1,6 @@
 #include "dog_control/physics/DogModel.h"
 
+#include "dog_control/physics/EigenToolbox.h"
 #include "dog_control/physics/SpatialToolbox.h"
 #include "dog_control/utils/Math.h"
 
@@ -8,21 +9,6 @@
 namespace dog_control
 {
 
-namespace
-{
-
-inline double ReadParOrDie(utils::ParamDictCRef dict,
-                           const std::string &param)
-{
-    const utils::ParamDict::const_iterator iter = dict.find(param);
-
-    CHECK(iter != dict.end()) << "Param \"" << param << "\" not found.";
-
-    return iter->second;
-}
-
-} /* anonymous */
-
 namespace physics
 {
 
@@ -30,13 +16,13 @@ using namespace spatial;
 
 void DogModel::Initialize(utils::ParamDictCRef dict)
 {
-    hip_pos_x_ = ReadParOrDie(dict, PARAM_WITH_NS(hip_pos_x, physics));
-    hip_pos_y_ = ReadParOrDie(dict, PARAM_WITH_NS(hip_pos_y, physics));
-    hip_len_y_ = ReadParOrDie(dict, PARAM_WITH_NS(hip_len_y, physics));
+    hip_pos_x_ = ReadParOrDie(dict, PARAM_WITH_NS(hip_pos_x, model));
+    hip_pos_y_ = ReadParOrDie(dict, PARAM_WITH_NS(hip_pos_y, model));
+    hip_len_y_ = ReadParOrDie(dict, PARAM_WITH_NS(hip_len_y, model));
     thigh_offset_z_
-            = ReadParOrDie(dict, PARAM_WITH_NS(thigh_offset_z, physics));
+            = ReadParOrDie(dict, PARAM_WITH_NS(thigh_offset_z, model));
     shin_offset_z_
-            = ReadParOrDie(dict, PARAM_WITH_NS(shin_offset_z, physics));
+            = ReadParOrDie(dict, PARAM_WITH_NS(shin_offset_z, model));
 
     friction_ = ReadParOrDie(dict, PARAM_WITH_NS(friction, motor));
     damping_ = ReadParOrDie(dict, PARAM_WITH_NS(damping, motor));
@@ -54,23 +40,23 @@ void DogModel::Initialize(utils::ParamDictCRef dict)
     Eigen::Vector3d tf_parent = Eigen::Vector3d::Zero();
     double mass;
 
-    mass = ReadParOrDie(dict, PARAM_WITH_NS(torso_mass, physics));
-    inertial(0, 0) = ReadParOrDie(dict, PARAM_WITH_NS(I0xx, physics));
-    inertial(1, 1) = ReadParOrDie(dict, PARAM_WITH_NS(I0yy, physics));
-    inertial(2, 2) = ReadParOrDie(dict, PARAM_WITH_NS(I0zz, physics));
+    mass = ReadParOrDie(dict, PARAM_WITH_NS(torso_mass, model));
+    inertial(0, 0) = ReadParOrDie(dict, PARAM_WITH_NS(I0xx, model));
+    inertial(1, 1) = ReadParOrDie(dict, PARAM_WITH_NS(I0yy, model));
+    inertial(2, 2) = ReadParOrDie(dict, PARAM_WITH_NS(I0zz, model));
     node_description_[0].inertia = BuildInertia(mass, com, inertial);
     node_description_[0].joint_type = floating;
     parent_[0] = - 1;
 
     // node of the hips
-    inertial(0, 0) = ReadParOrDie(dict, PARAM_WITH_NS(I1xx, physics));
-    inertial(1, 1) = ReadParOrDie(dict, PARAM_WITH_NS(I1yy, physics));
-    inertial(2, 2) = ReadParOrDie(dict, PARAM_WITH_NS(I1zz, physics));
+    inertial(0, 0) = ReadParOrDie(dict, PARAM_WITH_NS(I1xx, model));
+    inertial(1, 1) = ReadParOrDie(dict, PARAM_WITH_NS(I1yy, model));
+    inertial(2, 2) = ReadParOrDie(dict, PARAM_WITH_NS(I1zz, model));
     com = Eigen::Vector3d(
-                ReadParOrDie(dict, PARAM_WITH_NS(com_hip_x, physics)),
-                ReadParOrDie(dict, PARAM_WITH_NS(com_hip_y, physics)),
+                ReadParOrDie(dict, PARAM_WITH_NS(com_hip_x, model)),
+                ReadParOrDie(dict, PARAM_WITH_NS(com_hip_y, model)),
                 0);
-    mass = ReadParOrDie(dict, PARAM_WITH_NS(hip_mass, physics));
+    mass = ReadParOrDie(dict, PARAM_WITH_NS(hip_mass, model));
     tf_parent = Eigen::Vector3d(hip_pos_x_, hip_pos_y_, 0);
 
     for (int i = 0; i < 4; i++)
@@ -94,16 +80,16 @@ void DogModel::Initialize(utils::ParamDictCRef dict)
     }
 
     // thigh
-    inertial(0, 0) = ReadParOrDie(dict, PARAM_WITH_NS(I2xx, physics));
-    inertial(1, 1) = ReadParOrDie(dict, PARAM_WITH_NS(I2yy, physics));
-    const double I2yz = ReadParOrDie(dict, PARAM_WITH_NS(I2yz, physics));
-    inertial(2, 2) = ReadParOrDie(dict, PARAM_WITH_NS(I2zz, physics));
+    inertial(0, 0) = ReadParOrDie(dict, PARAM_WITH_NS(I2xx, model));
+    inertial(1, 1) = ReadParOrDie(dict, PARAM_WITH_NS(I2yy, model));
+    const double I2yz = ReadParOrDie(dict, PARAM_WITH_NS(I2yz, model));
+    inertial(2, 2) = ReadParOrDie(dict, PARAM_WITH_NS(I2zz, model));
     com = Eigen::Vector3d(0,
-                ReadParOrDie(dict, PARAM_WITH_NS(com_thigh_y, physics)),
-                ReadParOrDie(dict, PARAM_WITH_NS(com_thigh_z, physics)));
-    mass = ReadParOrDie(dict, PARAM_WITH_NS(thigh_mass, physics));
+                ReadParOrDie(dict, PARAM_WITH_NS(com_thigh_y, model)),
+                ReadParOrDie(dict, PARAM_WITH_NS(com_thigh_z, model)));
+    mass = ReadParOrDie(dict, PARAM_WITH_NS(thigh_mass, model));
     tf_parent = Eigen::Vector3d(
-                ReadParOrDie(dict, PARAM_WITH_NS(hip_len_x, physics)),
+                ReadParOrDie(dict, PARAM_WITH_NS(hip_len_x, model)),
                 hip_len_y_,
                 0);
 
@@ -130,14 +116,14 @@ void DogModel::Initialize(utils::ParamDictCRef dict)
     }
 
     // shin
-    inertial(0, 0) = ReadParOrDie(dict, PARAM_WITH_NS(I3xx, physics));
-    inertial(1, 1) = ReadParOrDie(dict, PARAM_WITH_NS(I3yy, physics));
+    inertial(0, 0) = ReadParOrDie(dict, PARAM_WITH_NS(I3xx, model));
+    inertial(1, 1) = ReadParOrDie(dict, PARAM_WITH_NS(I3yy, model));
     inertial(1, 2) = 0;
     inertial(2, 1) = 0;
-    inertial(2, 2) = ReadParOrDie(dict, PARAM_WITH_NS(I3zz, physics));
+    inertial(2, 2) = ReadParOrDie(dict, PARAM_WITH_NS(I3zz, model));
     com = Eigen::Vector3d(0, 0,
-                ReadParOrDie(dict, PARAM_WITH_NS(com_shin_z, physics)));
-    mass = ReadParOrDie(dict, PARAM_WITH_NS(shin_mass, physics));
+                ReadParOrDie(dict, PARAM_WITH_NS(com_shin_z, model)));
+    mass = ReadParOrDie(dict, PARAM_WITH_NS(shin_mass, model));
     tf_parent = Eigen::Vector3d(0, 0, thigh_offset_z_);
 
     for (int i = 0; i < 4; i++)
@@ -168,7 +154,7 @@ void DogModel::Initialize(utils::ParamDictCRef dict)
     }
 
     // for inverse kinematics convenience
-    hip_pos_x_ += ReadParOrDie(dict, PARAM_WITH_NS(hip_len_x, physics));
+    hip_pos_x_ += ReadParOrDie(dict, PARAM_WITH_NS(hip_len_x, model));
 }
 
 void DogModel::ConnectHardware(boost::shared_ptr<hardware::HardwareBase> hw)

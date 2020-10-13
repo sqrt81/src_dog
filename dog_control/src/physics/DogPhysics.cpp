@@ -29,31 +29,31 @@ void DogPhysics::Initialize(utils::ParamDictCRef dict)
 {
     double hip_len_x_;
 
-    READ_PARAM_OR_DIE(dict, hip_pos_x, physics);
-    READ_PARAM_OR_DIE(dict, hip_pos_y, physics);
-    READ_PARAM_OR_DIE(dict, hip_len_x, physics);
-    READ_PARAM_OR_DIE(dict, hip_len_y, physics);
+    READ_PARAM_OR_DIE(dict, hip_pos_x, model);
+    READ_PARAM_OR_DIE(dict, hip_pos_y, model);
+    READ_PARAM_OR_DIE(dict, hip_len_x, model);
+    READ_PARAM_OR_DIE(dict, hip_len_y, model);
     hip_pos_x_ += hip_len_x_;
-    READ_PARAM_OR_DIE(dict, thigh_offset_z, physics);
-    READ_PARAM_OR_DIE(dict, shin_offset_z, physics);
+    READ_PARAM_OR_DIE(dict, thigh_offset_z, model);
+    READ_PARAM_OR_DIE(dict, shin_offset_z, model);
 
-    READ_PARAM_OR_DIE(dict, com_hip_y, physics);
-    READ_PARAM_OR_DIE(dict, com_thigh_y, physics);
-    READ_PARAM_OR_DIE(dict, com_thigh_z, physics);
-    READ_PARAM_OR_DIE(dict, com_shin_z, physics);
+    READ_PARAM_OR_DIE(dict, com_hip_y, model);
+    READ_PARAM_OR_DIE(dict, com_thigh_y, model);
+    READ_PARAM_OR_DIE(dict, com_thigh_z, model);
+    READ_PARAM_OR_DIE(dict, com_shin_z, model);
 
-    READ_PARAM_OR_DIE(dict, hip_mass, physics);
-    READ_PARAM_OR_DIE(dict, thigh_mass, physics);
-    READ_PARAM_OR_DIE(dict, shin_mass, physics);
+    READ_PARAM_OR_DIE(dict, hip_mass, model);
+    READ_PARAM_OR_DIE(dict, thigh_mass, model);
+    READ_PARAM_OR_DIE(dict, shin_mass, model);
 
-    READ_PARAM_OR_DIE(dict, I1xx, physics);
-    READ_PARAM_OR_DIE(dict, I2xx, physics);
-    READ_PARAM_OR_DIE(dict, I2yy, physics);
-    READ_PARAM_OR_DIE(dict, I2yz, physics);
-    READ_PARAM_OR_DIE(dict, I2zz, physics);
-    READ_PARAM_OR_DIE(dict, I3xx, physics);
-    READ_PARAM_OR_DIE(dict, I3yy, physics);
-    READ_PARAM_OR_DIE(dict, I3zz, physics);
+    READ_PARAM_OR_DIE(dict, I1xx, model);
+    READ_PARAM_OR_DIE(dict, I2xx, model);
+    READ_PARAM_OR_DIE(dict, I2yy, model);
+    READ_PARAM_OR_DIE(dict, I2yz, model);
+    READ_PARAM_OR_DIE(dict, I2zz, model);
+    READ_PARAM_OR_DIE(dict, I3xx, model);
+    READ_PARAM_OR_DIE(dict, I3yy, model);
+    READ_PARAM_OR_DIE(dict, I3zz, model);
 
     READ_PARAM_OR_DIE(dict, friction, motor);
     READ_PARAM_OR_DIE(dict, damping, motor);

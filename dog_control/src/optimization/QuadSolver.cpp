@@ -9,36 +9,36 @@ namespace optimization
 namespace
 {
 
-inline float fabs_f(float x)
+inline double fabs_f(double x)
 {
     return x > 0 ? x : -x;
 }
 
-inline void compute_d(Eigen::VectorXf& d, const Eigen::MatrixXf& J,
-                      const Eigen::VectorXf& np)
+inline void compute_d(Eigen::VectorXd& d, const Eigen::MatrixXd& J,
+                      const Eigen::VectorXd& np)
 {
     /* compute d = H^T * np */
     d.noalias() = J.transpose() * np;
 }
 
-inline void update_z(Eigen::VectorXf& z, const Eigen::MatrixXf& J,
-                     const Eigen::VectorXf& d, int iq)
+inline void update_z(Eigen::VectorXd& z, const Eigen::MatrixXd& J,
+                     const Eigen::VectorXd& d, int iq)
 {
     const int sz = d.size() - iq;
     /* setting of z = H * d */
     z.noalias() = J.rightCols(sz) * d.bottomRows(sz);
 }
 
-inline void update_r(const Eigen::MatrixXf& R, Eigen::VectorXf& r,
-                     const Eigen::VectorXf& d, int iq)
+inline void update_r(const Eigen::MatrixXd& R, Eigen::VectorXd& r,
+                     const Eigen::VectorXd& d, int iq)
 {
     /* setting of r = R^-1 d */
     r.topRows(iq) = R.topLeftCorner(iq, iq).triangularView<Eigen::Upper>()
             .solve(d.topRows(iq));
 }
 
-bool add_constraint(Eigen::MatrixXf& R, Eigen::MatrixXf& J,
-                    Eigen::VectorXf& d, int& iq, float& R_norm)
+bool add_constraint(Eigen::MatrixXd& R, Eigen::MatrixXd& J,
+                    Eigen::VectorXd& d, int& iq, double& R_norm)
 {
     const int n = d.size();
 
@@ -61,11 +61,11 @@ bool add_constraint(Eigen::MatrixXf& R, Eigen::MatrixXf& J,
           Otherwise we have to apply the Givens rotation to these columns.
           The i - 1 element of d has to be updated to h.
         */
-        float cc = d[j - 1];
-        float ss = d[j];
-        float h = sqrt(cc * cc + ss * ss);
+        double cc = d[j - 1];
+        double ss = d[j];
+        double h = sqrt(cc * cc + ss * ss);
 
-        if (h < std::numeric_limits<float>::epsilon()) // h == 0
+        if (h < std::numeric_limits<double>::epsilon()) // h == 0
             continue;
 
         d[j] = 0.0;
@@ -81,10 +81,10 @@ bool add_constraint(Eigen::MatrixXf& R, Eigen::MatrixXf& J,
         else
             d[j - 1] = h;
 
-//        const float xny = ss / (1.0 + cc);
+//        const double xny = ss / (1.0 + cc);
 
-        const Eigen::VectorXf t1 = J.col(j - 1);
-        const Eigen::VectorXf t2 = J.col(j);
+        const Eigen::VectorXd t1 = J.col(j - 1);
+        const Eigen::VectorXd t2 = J.col(j);
         J.col(j - 1) = cc * t1 + ss * t2;
         J.col(j)     = ss * t1 - cc * t2;
 //        J.col(j) = xny * (t1 + J.col(j - 1)) - t2;
@@ -99,18 +99,18 @@ bool add_constraint(Eigen::MatrixXf& R, Eigen::MatrixXf& J,
      */
     R.block(0, iq - 1, iq, 1) = d.topRows(iq);
 
-    if (fabs(d[iq - 1]) <= std::numeric_limits<float>::epsilon() * R_norm)
+    if (fabs(d[iq - 1]) <= std::numeric_limits<double>::epsilon() * R_norm)
     {
         // problem degenerate
         return false;
     }
 
-    R_norm = std::max<float>(R_norm, fabs(d[iq - 1]));
+    R_norm = std::max<double>(R_norm, fabs(d[iq - 1]));
     return true;
 }
 
-void delete_constraint(Eigen::MatrixXf& R, Eigen::MatrixXf& J,
-                       Eigen::VectorXi& A, Eigen::VectorXf& u,
+void delete_constraint(Eigen::MatrixXd& R, Eigen::MatrixXd& J,
+                       Eigen::VectorXi& A, Eigen::VectorXd& u,
                        int p, int& iq, int l)
 {
     int qq = -1; // just to prevent warnings from smart compilers
@@ -144,11 +144,11 @@ void delete_constraint(Eigen::MatrixXf& R, Eigen::MatrixXf& J,
 
     for (int j = qq; j < iq; j++)
     {
-        float cc = R(j, j);
-        float ss = R(j + 1, j);
-        float h = sqrt(cc * cc + ss * ss);
+        double cc = R(j, j);
+        double ss = R(j + 1, j);
+        double h = sqrt(cc * cc + ss * ss);
 
-        if (h < std::numeric_limits<float>::epsilon()) // h == 0
+        if (h < std::numeric_limits<double>::epsilon()) // h == 0
             continue;
 
         cc = cc / h;
@@ -164,12 +164,12 @@ void delete_constraint(Eigen::MatrixXf& R, Eigen::MatrixXf& J,
         else
             R(j, j) = h;
 
-//        float xny = ss / (1.0 + cc);
+//        double xny = ss / (1.0 + cc);
 
-        Eigen::MatrixXf::ColsBlockXpr R_interest(
+        Eigen::MatrixXd::ColsBlockXpr R_interest(
                     R.middleCols(j + 1, iq - j - 1));
-        Eigen::RowVectorXf t1 = R_interest.row(j);
-        Eigen::RowVectorXf t2 = R_interest.row(j + 1);
+        Eigen::RowVectorXd t1 = R_interest.row(j);
+        Eigen::RowVectorXd t2 = R_interest.row(j + 1);
         R_interest.row(j)     = cc * t1 + ss * t2;
         R_interest.row(j + 1) = ss * t1 - cc * t2;
 //        R_interest.row(j + 1) = xny * (t1 + R_interest.row(j)) - t2;
@@ -184,10 +184,10 @@ void delete_constraint(Eigen::MatrixXf& R, Eigen::MatrixXf& J,
 
 } /* anonymous */
 
-float SolveQuadProg(const Eigen::MatrixXf& G, const Eigen::VectorXf& g0,
-                    const Eigen::MatrixXf& CE, const Eigen::VectorXf& ce0,
-                    const Eigen::MatrixXf& CI, const Eigen::VectorXf& ci0,
-                    Eigen::VectorXf& x)
+double SolveQuadProg(const Eigen::MatrixXd& G, const Eigen::VectorXd& g0,
+                    const Eigen::MatrixXd& CE, const Eigen::VectorXd& ce0,
+                    const Eigen::MatrixXd& CI, const Eigen::VectorXd& ci0,
+                    Eigen::VectorXd& x)
 {
     /* p is the number of equality constraints */
     /* m is the number of inequality constraints */
@@ -209,18 +209,18 @@ float SolveQuadProg(const Eigen::MatrixXf& G, const Eigen::VectorXf& g0,
     /* this is the index of the constraint to be added to the active set */
     int ip;
 
-    Eigen::VectorXf s(m + p), r(m + p), u(m + p), u_old(m + p);
-    Eigen::VectorXf np(n), z(n), x_old(n);
+    Eigen::VectorXd s(m + p), r(m + p), u(m + p), u_old(m + p);
+    Eigen::VectorXd np(n), z(n), x_old(n);
 
-    float f_value, R_norm;
+    double f_value, R_norm;
 
-    constexpr float inf = std::numeric_limits<float>::has_infinity ?
-                std::numeric_limits<float>::infinity() : 1E30;
+    constexpr double inf = std::numeric_limits<double>::has_infinity ?
+                std::numeric_limits<double>::infinity() : 1E30;
 
     /* t is the step lenght, which is the minimum of
      * the partial step length t1
      * and the full step length t2 */
-    float t, t1, t2;
+    double t, t1, t2;
 
     Eigen::VectorXi A(m + p), A_old(m + p), iai(m + p);
     Eigen::VectorXi iaexcl(m + p);
@@ -230,21 +230,21 @@ float SolveQuadProg(const Eigen::MatrixXf& G, const Eigen::VectorXf& g0,
      */
 
     /* decompose the matrix G in the form L L^T */
-    Eigen::MatrixXf J;
+    Eigen::MatrixXd J;
 
     if (G.isDiagonal())
         J = G.diagonal().cwiseSqrt().cwiseInverse().asDiagonal();
     else
         J = G.llt().matrixU()
-            .solve(Eigen::MatrixXf::Identity(n, n));
+            .solve(Eigen::MatrixXd::Identity(n, n));
 
-    Eigen::MatrixXf R = Eigen::MatrixXf::Zero(n, n);
-    Eigen::VectorXf d = Eigen::VectorXf::Zero(n);
+    Eigen::MatrixXd R = Eigen::MatrixXd::Zero(n, n);
+    Eigen::VectorXd d = Eigen::VectorXd::Zero(n);
 
     R_norm = 1.0; /* this variable will hold the norm of the matrix R */
 
     /* An estimate for cond(G) */
-    const float cond = G.trace() * J.trace();
+    const double cond = G.trace() * J.trace();
 
     /*
      * Find the unconstrained minimizer of the quadratic form
@@ -270,7 +270,7 @@ float SolveQuadProg(const Eigen::MatrixXf& G, const Eigen::VectorXf& g0,
          * s.t. the contraint becomes feasible */
         t2 = 0.0;
 
-        if (z.norm() > std::numeric_limits<float>::epsilon()) // i.e. z != 0
+        if (z.norm() > std::numeric_limits<double>::epsilon()) // i.e. z != 0
             t2 = (- np.dot(x) - ce0[i]) / np.dot(z);
 
         /* set x = x + t2 * z */
@@ -315,12 +315,12 @@ l1: /* step 1: choose a violated constraint */
     s.head(m).noalias() = CI.transpose() * x + ci0;
 
     /* psi will contain the sum of all infeasibilities */
-    float psi = s.cwiseMin(0).sum();
+    double psi = s.cwiseMin(0).sum();
 
     // note that the right side would be
-    // m * std::numeric_limits<double>::epsilon() * cond * 100.0
-    // if use double instead of float.
-    if (- psi <= m * std::numeric_limits<float>::epsilon() * cond * 0.01)
+    // m * std::numeric_limits<float>::epsilon() * cond * 0.01
+    // if use float instead of double.
+    if (- psi <= m * std::numeric_limits<double>::epsilon() * cond * 100.)
     {
       /* numerically there are not infeasibilities anymore */
 //      q = iq;
@@ -391,7 +391,7 @@ l2a:/* Step 2a: determine step direction */
     /* Compute t2: full step length
      * (minimum step in primal space such that
      *  the constraint ip becomes feasible) */
-    if (z.norm() > std::numeric_limits<float>::epsilon()) // i.e. z != 0
+    if (z.norm() > std::numeric_limits<double>::epsilon()) // i.e. z != 0
     {
         t2 = - s[ip] / np.dot(z);
 
@@ -438,7 +438,7 @@ l2a:/* Step 2a: determine step direction */
     u.topRows(iq) -= t * r.topRows(iq);
     u[iq] += t;
 
-    if (fabs_f(t - t2) < std::numeric_limits<float>::epsilon())
+    if (fabs_f(t - t2) < std::numeric_limits<double>::epsilon())
     {
         /* full step has taken */
         /* add constraint ip to the active set*/

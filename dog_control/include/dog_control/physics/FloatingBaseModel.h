@@ -6,7 +6,6 @@
 
 #include "dog_control/message/ModelJointState.h"
 #include "SpatialProperties.h"
-#include "SpatialToolbox.h"
 
 namespace dog_control
 {

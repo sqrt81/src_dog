@@ -12,8 +12,8 @@ namespace utils
 
 #define PARAM_WITH_NS(param, ns) #ns "/" #param
 
-typedef std::map<std::string, double> ParamDict;
-typedef const ParamDict& ParamDictCRef;
+using ParamDict = std::map<std::string, double>;
+using ParamDictCRef = const ParamDict&;
 
 } /* utils */
 

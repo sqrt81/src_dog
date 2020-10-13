@@ -3,6 +3,8 @@
 
 #include <sstream>
 
+#include "dog_control/utils/ParamDict.h"
+
 namespace dog_control
 {
 
@@ -68,13 +70,23 @@ private:
     if (expr) \
         ; \
     else \
-        LOG(FATAL)
+        LOG(FATAL) << ""
 
 #define CHECK_FATAL(expr) \
     if (expr) \
         ; \
     else \
-        LOG(FATAL)
+        LOG(FATAL) << ""
+
+inline double ReadParOrDie(utils::ParamDictCRef dict,
+                           const std::string &param)
+{
+    const utils::ParamDict::const_iterator iter = dict.find(param);
+
+    CHECK(iter != dict.end()) << "Param \"" << param << "\" not found.";
+
+    return iter->second;
+}
 
 } /* dog_control */
 

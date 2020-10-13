@@ -1,6 +1,6 @@
 #include "dog_control/physics/SpatialToolbox.h"
-
-#include <cassert>
+#include "dog_control/physics/EigenToolbox.h"
+#include "dog_control/utils/MiniLog.h"
 
 namespace dog_control
 {
@@ -10,30 +10,6 @@ namespace physics
 
 namespace spatial
 {
-
-Eigen::Matrix3d ToLowerMatrix(const Eigen::Vector3d& upper_vec)
-{
-    Eigen::Matrix3d mat;
-
-    mat(0, 0) =               0;
-    mat(0, 1) = - upper_vec.z();
-    mat(0, 2) =   upper_vec.y();
-    mat(1, 0) =   upper_vec.z();
-    mat(1, 1) =               0;
-    mat(1, 2) = - upper_vec.x();
-    mat(2, 0) = - upper_vec.y();
-    mat(2, 1) =   upper_vec.x();
-    mat(2, 2) =               0;
-
-    return mat;
-}
-
-Eigen::Vector3d ToUpperVector(const Eigen::Matrix3d& lower_mat)
-{
-    return Eigen::Vector3d(lower_mat(2, 1) - lower_mat(1, 2),
-                           lower_mat(0, 2) - lower_mat(2, 0),
-                           lower_mat(1, 0) - lower_mat(0, 1)) / 2;
-}
 
 SVec MotionCrossProduct(const SVec& a, const SVec& b)
 {
@@ -116,9 +92,11 @@ SMat BuildJointTransform(const SVec& joint_axis,
     }
         break;
     case floating:
-        assert(false /* floating base should use BuildTransform */);
+        LOG(FATAL) << "[Build Joint Transform] "
+                      "Floating base should use BuildTransform.";
     default:
-        assert(false /* unknown joint type */);
+        LOG(FATAL) << "[Build Joint Transform] "
+                      "Unknown joint type.";
     }
 
     return BuildTransform(trans, rot);

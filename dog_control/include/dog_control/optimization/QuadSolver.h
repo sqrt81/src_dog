@@ -57,10 +57,10 @@ namespace dog_control
 namespace optimization
 {
 
-float SolveQuadProg(const Eigen::MatrixXf &G, const Eigen::VectorXf &g0,
-                    const Eigen::MatrixXf &CE, const Eigen::VectorXf &ce0,
-                    const Eigen::MatrixXf &CI, const Eigen::VectorXf &ci0,
-                    Eigen::VectorXf &x);
+double SolveQuadProg(const Eigen::MatrixXd &G, const Eigen::VectorXd &g0,
+                     const Eigen::MatrixXd &CE, const Eigen::VectorXd &ce0,
+                     const Eigen::MatrixXd &CI, const Eigen::VectorXd &ci0,
+                     Eigen::VectorXd &x);
 
 } /* optimization */
 

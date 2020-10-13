@@ -20,7 +20,7 @@ find_package(Eigen3 REQUIRED)
 file(GLOB_RECURSE ALL_SRCS "src/*.cpp")
 
 SET(CMAKE_BUILD_TYPE "Debug") 
-SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O3 -Wall -g -ggdb")
+SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
 SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
 
 ## System dependencies are found with CMake's conventions

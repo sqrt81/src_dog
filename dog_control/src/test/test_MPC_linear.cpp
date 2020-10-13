@@ -14,7 +14,7 @@
 
 using namespace dog_control;
 
-int main(int argc, char** argv)
+int test_MPC_linear(int argc, char** argv)
 {
     ros::init(argc, argv, "~");
     std::string config_file;
@@ -68,7 +68,7 @@ int main(int argc, char** argv)
     std::endl(std::cout);
 
     message::LegConfiguration conf;
-    conf.kd = 10;
+    conf.kd = 2;
     conf.kp = 100;
     std::array<Eigen::Vector3d, 4> fake_ref_footforce;
     std::array<bool, 4> fake_foot_contact;
@@ -83,35 +83,36 @@ int main(int argc, char** argv)
         fake_foot_contact[i] = true;
     }
 
+    constexpr double M_PI_8 = M_PI / 8;
+
     // temp standup function
     for (int i = 0; i < 500; i++)
     {
-        Eigen::AngleAxisd rot(i * M_PI_2 * 0.8 / 500,
-                              Eigen::Vector3d::UnitX());
+        Eigen::AngleAxisd rot(i * M_PI_8 / 500, Eigen::Vector3d::UnitZ());
+        rot = rot * Eigen::AngleAxisd(i * M_PI_8 / 500,
+                                      Eigen::Vector3d::UnitX());
         for (int j = 0; j < 4; j++)
         {
             message::FootState fs;
             fs.foot_name = static_cast<message::LegName>(j);
             fs.pos = {0.283 * (j < 2      ? 1 : - 1),
                       0.118 * (j % 2 == 0 ? 1 : - 1),
-                      - 0.4 + i * 0.15 / 500};
+                      - 0.4 + i * 0.1 / 500};
             fs.pos = rot.inverse() * fs.pos;
-            fs.vel = {0, 0, 0.3};
+            fs.vel = {0, 0, 0.2};
             controller->SetFootStateCmd(fs);
 
-            fs.pos = {0.283 * (j < 2      ? 1 : - 1),
-                      0.118 * (j % 2 == 0 ? 1 : - 1),
-                      0};
+            fs.pos.z() = 0;
             fs.vel.z() = 0;
             wbc->SetFootMotionTask(fs, Eigen::Vector3d::Zero());
         }
 
         message::FloatingBaseState fbs;
-        fbs.trans = {0, 0, 0.4 - i * 0.15 / 500};
+        fbs.trans = {0, 0, 0.4 - i * 0.1 / 500};
         fbs.rot = rot;
-        fbs.linear_vel = {0, 0, - 0.3};
+        fbs.linear_vel = {0, 0, - 0.2};
         fbs.rot_vel.setZero();
-        fbs.rot_vel.x() = M_PI_2 * 0.8 / 500 * 1000;
+        fbs.rot_vel.z() = M_PI_8 / 500 * 1000;
 
         wbc->SetTorsoMotionTask(fbs, Eigen::Vector3d::Zero(),
                                 Eigen::Vector3d::Zero());
@@ -138,7 +139,7 @@ int main(int argc, char** argv)
     }
 
     int iter = 0;
-    constexpr double len = 0.2;
+    constexpr double len = - 0.02;
     constexpr double duration = 400;
     constexpr double t = duration / 1000.;
 
@@ -147,31 +148,27 @@ int main(int argc, char** argv)
     control::ModelPredictiveController::FeetPosSeq fseq(6);
     control::ModelPredictiveController::FeetContactSeq fcseq(6);
 
-    Eigen::AngleAxisd rot_base
-            = Eigen::AngleAxisd(M_PI_2 * 0.8, Eigen::Vector3d::UnitX());
-
     while(ros::ok())
     {
         iter++;
 
-        Eigen::AngleAxisd rot = rot_base;
-        rot = rot * Eigen::AngleAxisd(
-                    len * sin(iter / duration * 2 * M_PI),
-                    Eigen::Vector3d::UnitZ());
+        Eigen::AngleAxisd rot(M_PI_8, Eigen::Vector3d::UnitZ());
+        rot = rot * Eigen::AngleAxisd(M_PI_8, Eigen::Vector3d::UnitX());
 
         if(iter % 10 == 1) // make sure mpc is inited in the first round
         {
             for(int i = 0; i < 6; i++)
             {
                 message::FloatingBaseState& fbs = torso_traj[i];
-                fbs.trans = {0, 0, 0.25};
-                fbs.rot = rot_base * Eigen::AngleAxisd(
-                            len * sin((iter + i) / duration * 2 * M_PI),
-                            Eigen::Vector3d::UnitZ());
+                fbs.trans = {len * cos((iter + i) / duration * 2 * M_PI)
+                             - len,
+                             0, 0.3};
+                fbs.rot = rot;
                 fbs.linear_vel = {0, 0, 0};
+                fbs.linear_vel.x() = - len * 2 * M_PI / t
+                        * sin(iter / duration * 2 * M_PI);
+                fbs.linear_vel = rot.inverse() * fbs.linear_vel;
                 fbs.rot_vel.setZero();
-                fbs.rot_vel.z() = len * 2 * M_PI / t
-                        * cos((iter + i) / duration * 2 * M_PI);
 
                 std::array<Eigen::Vector3d, 4>& fps = fseq[i];
                 std::array<bool, 4>& fcs = fcseq[i];
@@ -189,40 +186,43 @@ int main(int argc, char** argv)
             mpc->SetFeetPose(fseq, fcseq);
         }
 
-        message::FloatingBaseState fbs;
-        fbs.trans = {0, 0, 0.25};
-        fbs.rot = rot;
-        fbs.linear_vel = {0, 0, 0};
-        fbs.rot_vel.setZero();
-        fbs.rot_vel.z() = len * 2 * M_PI / t
-                * cos(iter / duration * 2 * M_PI);
-
         for (int i = 0; i < 4; i++)
         {
             message::FootState fs;
             fs.foot_name = static_cast<message::LegName>(i);
-            fs.pos = {0.283 * (i < 2      ? 1 : - 1),
+            fs.pos = {0.283 * (i < 2      ? 1 : - 1) + len
+                      - len * cos(iter / duration * 2 * M_PI),
                       0.118 * (i % 2 == 0 ? 1 : - 1),
-                      - 0.25};
-            fs.vel = - fbs.rot_vel.cross(fs.pos); // global
-            fs.vel = rot.inverse() * fs.vel; // local
+                      - 0.3};
             fs.pos = rot.inverse() * fs.pos;
+            fs.vel = Eigen::Vector3d::Zero();
+            fs.vel.x() = len * 2 * M_PI / t
+                    * sin(iter / duration * 2 * M_PI);
+            fs.vel = rot.inverse() * fs.vel;
             controller->SetFootStateCmd(fs);
 
-            fs.pos = {0.283 * (i < 2      ? 1 : - 1),
-                      0.118 * (i % 2 == 0 ? 1 : - 1),
-                      0.};
-//            fs.pos = rot.inverse() * fs.pos;
+            fs.pos.x() = 0.283 * (i < 2      ? 1 : - 1);
+            fs.pos.y() = 0.118 * (i % 2 == 0 ? 1 : - 1);
+            fs.pos = rot.inverse() * fs.pos;
             fs.vel.setZero();
             wbc->SetFootMotionTask(fs, Eigen::Vector3d::Zero());
         }
 
-        Eigen::Vector3d torso_acc = {0, 0,
-                                     - len * utils::square(2 * M_PI / t)
-                                      * sin(iter / duration * 2 * M_PI)};
+        message::FloatingBaseState fbs;
+        fbs.trans = {len * cos(iter / duration * 2 * M_PI) - len, 0, 0.3};
+        fbs.rot = rot;
+        fbs.linear_vel = {0, 0, 0};
+        fbs.linear_vel.x() = - len * 2 * M_PI / t
+                * sin(iter / duration * 2 * M_PI);
+        fbs.linear_vel = rot.inverse() * fbs.linear_vel;
+        fbs.rot_vel.setZero();
+        Eigen::Vector3d torso_acc = {- len * utils::square(2 * M_PI / t)
+                                      * cos(iter / duration * 2 * M_PI),
+                                     0,
+                                     0};
 
-        wbc->SetTorsoMotionTask(fbs, Eigen::Vector3d::Zero(),
-                                /*rot * torso_acc*/Eigen::Vector3d::Zero());
+        wbc->SetTorsoMotionTask(fbs, torso_acc,
+                                Eigen::Vector3d::Zero());
 //        wbc->SetRefFootForces(fake_ref_footforce, fake_foot_contact);
 
         ros::spinOnce();

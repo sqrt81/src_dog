@@ -93,7 +93,9 @@ int test_WBC_torso(int argc, char** argv)
             fs.vel = {0, 0, 0.2};
             controller->SetFootStateCmd(fs);
 
-            fs.pos.z() = 0;
+            fs.pos = {0.283 * (j < 2      ? 1 : - 1),
+                      0.118 * (j % 2 == 0 ? 1 : - 1),
+                      0};
             fs.vel.z() = 0;
             wbc->SetFootMotionTask(fs, Eigen::Vector3d::Zero());
         }
@@ -158,7 +160,7 @@ int test_WBC_torso(int argc, char** argv)
 
             fs.pos.x() = 0.283 * (i < 2      ? 1 : - 1);
             fs.pos.y() = 0.118 * (i % 2 == 0 ? 1 : - 1);
-            fs.pos = rot.inverse() * fs.pos;
+//            fs.pos = rot.inverse() * fs.pos;
             fs.vel.setZero();
             wbc->SetFootMotionTask(fs, Eigen::Vector3d::Zero());
         }

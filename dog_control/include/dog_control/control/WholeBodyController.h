@@ -16,6 +16,15 @@ namespace dog_control
 namespace control
 {
 
+/**
+ * @brief The WholeBodyController class
+ * The WBC takes torso and end effectors' desired position, velocity
+ * and acceleration as its tasks.
+ * A typical WBC should compute desired joints' position, velocity
+ * and effort so as to achieve the above tasks.
+ * However, the first two works are finished by FootPosController,
+ * so here the WBC only needs to compute effort.
+ */
 class WholeBodyController
 {
 protected:
@@ -30,13 +39,30 @@ public:
 
     void SetPipelineData(boost::shared_ptr<message::MotorCommand> cmd);
 
+    /**
+     * @brief SetTorsoMotionTask
+     * Set desired torso state and acceleration.
+     * Note that desired accelerations are expressed in global frame.
+     */
     void SetTorsoMotionTask(FBStateCRef state_desired,
                             const Eigen::Vector3d &a_lin_desired,
                             const Eigen::Vector3d &a_rot_desired);
 
+    /**
+     * @brief SetFootMotionTask
+     * Set desired foot state and acceleration.
+     * Note that desired accelerations are also expressed in global frame.
+     */
     void SetFootMotionTask(FootStateCRef state_desired,
                            const Eigen::Vector3d &a_desired);
 
+    /**
+     * @brief SetRefFootForces
+     * Set reference foot forces and foot contact state. The foot forces
+     * decided by WBC will be close to the referece.
+     * @param foot_forces       reference foot forces (may come from MPC)
+     * @param foot_contact      foot contact state, true means in contact
+     */
     void SetRefFootForces(const std::array<Eigen::Vector3d, 4> &foot_forces,
                           const std::array<bool, 4> &foot_contact);
 
@@ -51,7 +77,9 @@ private:
 
     double q_f_; // loss factor for foot force difference
     double q_j_; // loss factor for joint acc difference
-    double friction_; // ground friction factor
+    double ground_friction_; // ground friction factor
+
+    Eigen::Vector3d gravity_;
 
     boost::weak_ptr<physics::DogModel> model_ptr_;
 
@@ -67,13 +95,21 @@ private:
     std::array<Eigen::Vector3d, 4> ref_force_;
     std::array<bool, 4> foot_contact_;
 
+    Eigen::MatrixXd mass_;
+    Eigen::MatrixXd inv_m_;
+    Eigen::VectorXd force_bias_;
+    Eigen::VectorXd vq_;
+    Eigen::MatrixXd jacobian_;
+    Eigen::MatrixXd null_space_;
+    Eigen::MatrixXd null_space_i_;
+
     // used for optimization
-    Eigen::MatrixXf G_;
-    Eigen::VectorXf g0_;
-    Eigen::MatrixXf CE_;
-    Eigen::VectorXf ce0_;
-    Eigen::MatrixXf CI_;
-    Eigen::VectorXf ci0_;
+    Eigen::MatrixXd G_;
+    Eigen::VectorXd g0_;
+    Eigen::MatrixXd CE_;
+    Eigen::VectorXd ce0_;
+    Eigen::MatrixXd CI_;
+    Eigen::VectorXd ci0_;
 };
 
 } /* control */

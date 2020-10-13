@@ -1,6 +1,8 @@
 #include "dog_control/physics/FloatingBaseModel.h"
+#include "dog_control/physics/EigenToolbox.h"
+#include "dog_control/physics/SpatialToolbox.h"
+#include "dog_control/utils/MiniLog.h"
 
-#include <cassert>
 #include <iostream>
 
 namespace dog_control
@@ -15,13 +17,19 @@ namespace spatial
 int FloatingBaseModel::AddLink(const NodeDescription &node, int parent)
 {
     // the link's parent must have a smaller id
-    assert(static_cast<unsigned>(parent) <= node_description_.size());
+    CHECK(static_cast<unsigned>(parent) <= node_description_.size())
+            << "[FloatingBaseModel] "
+               "The link's parent must have a smaller id.";
 
     const int link_id = node_description_.size() + 1;
 
     // only the first link could have a floating joint
-    assert((link_id != 1) xor (node.joint_type == floating));
-    assert((link_id != 1) xor (parent == 0));
+    CHECK((link_id != 1) xor (node.joint_type == floating))
+            << "[FloatingBaseModel] "
+               " Link " << link_id << " has a floating joint.";
+    CHECK((link_id != 1) xor (parent == 0))
+            << "[FloatingBaseModel] "
+               " Link " << link_id << " connects to the fix base.";
 
     node_description_.push_back(node);
     parent_.push_back(parent - 1);
@@ -32,7 +40,9 @@ int FloatingBaseModel::AddLink(const NodeDescription &node, int parent)
 int FloatingBaseModel::AddEndEffector(int link_id,
                                       const Eigen::Vector3d &ee_local_pos)
 {
-    assert(static_cast<unsigned>(link_id - 1) < node_description_.size());
+    CHECK(static_cast<unsigned>(link_id - 1) < node_description_.size())
+            << "[FloatingBaseModel] "
+               "End effector attaching to an unknown link.";
 
     const int ee_id = ee_local_pos.size();
 
@@ -46,8 +56,14 @@ void FloatingBaseModel::SetJointMotionState(FBJSCRef stat)
     // exclude the floating base
     const size_t joint_size = node_description_.size() - 1;
 
-    assert(stat.q.size() == joint_size);
-    assert(stat.dq.size() == joint_size);
+    CHECK(stat.q.size() == joint_size)
+            << "[FloatingBaseModel] "
+               "Invalid joint position size " << stat.q.size()
+            << " (expected " << joint_size << ").";
+    CHECK(stat.dq.size() == joint_size)
+            << "[FloatingBaseModel] "
+               "Invalid joint velocity size " << stat.dq.size()
+            << " (expected " << joint_size << ").";
 
     js_ = stat;
 
@@ -116,6 +132,8 @@ void FloatingBaseModel::ForwardKinematics()
         X0_rot_[i] = X_parent_rot_[i] * X0_[parent_[i]];
         a_C_rot_[i] = MotionCrossProduct(v_rot_[i], v_joint);
     }
+
+    kinematics_updated_ = true;
 }
 
 Eigen::VectorXd FloatingBaseModel::BiasForces()
@@ -243,7 +261,9 @@ Eigen::MatrixXd FloatingBaseModel::MassMatrix()
 
 Eigen::Vector3d FloatingBaseModel::EEPos(int ee_id) const
 {
-    assert(static_cast<unsigned>(ee_id) < ee_info_.size());
+    CHECK(static_cast<unsigned>(ee_id) < ee_info_.size())
+            << "[FloatingBaseModel] "
+               "Invalid end effector id " << ee_id << ".";
 
     const EndEffectorInfo& ee = ee_info_[ee_id];
 
@@ -252,7 +272,9 @@ Eigen::Vector3d FloatingBaseModel::EEPos(int ee_id) const
 
 Eigen::Vector3d FloatingBaseModel::EEVel(int ee_id) const
 {
-    assert(static_cast<unsigned>(ee_id) < ee_info_.size());
+    CHECK(static_cast<unsigned>(ee_id) < ee_info_.size())
+            << "[FloatingBaseModel] "
+               "Invalid end effector id " << ee_id << ".";
 
     const EndEffectorInfo& ee = ee_info_[ee_id];
 

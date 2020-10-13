@@ -112,16 +112,10 @@ void FootPosController::Update()
         if (utils::abs(jacob.determinant()) > 1e-3)
         {
             vel = jacob.inverse() * vel;
-            offset_cmd[0].kd = config.kd;
-            offset_cmd[1].kd = config.kd;
-            offset_cmd[2].kd = config.kd;
         }
         else
         {
             vel = Eigen::Vector3d::Zero();
-            offset_cmd[0].kd = 0;
-            offset_cmd[1].kd = 0;
-            offset_cmd[2].kd = 0;
         }
 
         offset_cmd[0].v_desired = vel(0);
@@ -131,6 +125,9 @@ void FootPosController::Update()
         offset_cmd[0].kp = config.kp;
         offset_cmd[1].kp = config.kp;
         offset_cmd[2].kp = config.kp;
+        offset_cmd[0].kd = config.kd;
+        offset_cmd[1].kd = config.kd;
+        offset_cmd[2].kd = config.kd;
 
         offset_cmd[0].torq = cmd_forces_(i * 3    );
         offset_cmd[1].torq = cmd_forces_(i * 3 + 1);

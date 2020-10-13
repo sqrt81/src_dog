@@ -12,22 +12,22 @@ int test_Goldfarb_opt()
     constexpr int n_ci = 300;
 
     // set a hessian matrix
-    Eigen::MatrixXf H = Eigen::MatrixXf::Random(n_v, n_v);
+    Eigen::MatrixXd H = Eigen::MatrixXd::Random(n_v, n_v);
     H = H.transpose() * H;
-    Eigen::VectorXf g = Eigen::VectorXf::Random(n_v);
+    Eigen::VectorXd g = Eigen::VectorXd::Random(n_v);
 
     // span an available area by several corners
-    std::array<Eigen::VectorXf, n_ci> x0;
+    std::array<Eigen::VectorXd, n_ci> x0;
 
     for (int i = 0; i < n_ci; i++)
-        x0[i] = Eigen::VectorXf::Random(n_v) * 10;
+        x0[i] = Eigen::VectorXd::Random(n_v) * 10;
 
     // set constraints. keep all x0 available to ensure
     // there exists a solution.
 
-    Eigen::MatrixXf ci;
-    Eigen::VectorXf li;
-    ci = Eigen::MatrixXf::Random(n_ci, n_v);
+    Eigen::MatrixXd ci;
+    Eigen::VectorXd li;
+    ci = Eigen::MatrixXd::Random(n_ci, n_v);
     li.resize(n_ci);
     // ci * x >= li
 
@@ -47,8 +47,8 @@ int test_Goldfarb_opt()
     }
 
     // use pca to compute ce, le.
-    Eigen::MatrixXf cov = Eigen::MatrixXf::Zero(n_v, n_v);
-    Eigen::VectorXf sum = Eigen::VectorXf::Zero(n_v);
+    Eigen::MatrixXd cov = Eigen::MatrixXd::Zero(n_v, n_v);
+    Eigen::VectorXd sum = Eigen::VectorXd::Zero(n_v);
 
     // only use the first n_ce_sel elements
     for (int i = 0; i < n_ce_sel; i++)
@@ -58,11 +58,11 @@ int test_Goldfarb_opt()
     }
 
     cov -= sum * sum.transpose() / n_ce_sel;
-    Eigen::EigenSolver<Eigen::MatrixXf> es(cov);
-    Eigen::MatrixXf vec = es.pseudoEigenvectors();
-    Eigen::VectorXf val = es.pseudoEigenvalueMatrix().diagonal();
+    Eigen::EigenSolver<Eigen::MatrixXd> es(cov);
+    Eigen::MatrixXd vec = es.pseudoEigenvectors();
+    Eigen::VectorXd val = es.pseudoEigenvalueMatrix().diagonal();
 
-    Eigen::MatrixXf ce;
+    Eigen::MatrixXd ce;
     ce.resize(n_ce, n_v);
 
     for (int i = 0; i < n_ce; i++)
@@ -75,9 +75,9 @@ int test_Goldfarb_opt()
         ce.row(i) = vec.col(max_pos).transpose();
     }
 
-    Eigen::VectorXf le = ce * x0[0];
+    Eigen::VectorXd le = ce * x0[0];
 
-    Eigen::VectorXf res_g = Eigen::VectorXf::Zero(n_v);
+    Eigen::VectorXd res_g = Eigen::VectorXd::Zero(n_v);
 
     struct timeval t1, t2;
     int timeuse;

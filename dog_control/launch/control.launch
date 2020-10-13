@@ -3,7 +3,7 @@
 <launch>
 
   <node name="dog_control" pkg="dog_control" type="dog_control_node"
-    output="screen" >
+    output="screen">
     <param name="config_file" value="$(find dog_control)/config/dog_config.lua" />
     <remap from="/dog_control/imu" to="/dog/imu" />
     <remap from="/dog_control/joint_state" to="/dog/joint_states" />

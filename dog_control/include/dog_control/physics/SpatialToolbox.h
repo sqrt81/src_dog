@@ -15,19 +15,6 @@ namespace spatial
 {
 
 /**
- * @brief ToLowerMatrix
- * Get a matrix M that for any vector a,
- * upper_vec X a = M * a.
- */
-Eigen::Matrix3d ToLowerMatrix(const Eigen::Vector3d& upper_vec);
-
-/**
- * @brief ToUpperVector
- * Inverse function of "ToLowerMatrix"
- */
-Eigen::Vector3d ToUpperVector(const Eigen::Matrix3d& lower_mat);
-
-/**
  * @brief MotionCrossProduct
  * Motion vector cross product function, copied from MIT cheetah code.
  * Returns a x b. SVec b should be a motion vector.

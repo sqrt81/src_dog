@@ -58,26 +58,24 @@ inline Eigen::Vector3d QuatToSO3(const Eigen::Quaterniond &quat)
     return so3;
 }
 
-inline double ReadParOrDie(utils::ParamDictCRef dict,
-                           const std::string &param)
-{
-    const utils::ParamDict::const_iterator iter = dict.find(param);
-
-    CHECK(iter != dict.end()) << "Param \"" << param << "\" not found.";
-
-    return iter->second;
-}
-
 } /* anonymous */
 
 WholeBodyController::WholeBodyController()
 {
-    G_ = Eigen::MatrixXf::Zero(n_v, n_v);
+    mass_.resize(n_j, n_j);
+    inv_m_.resize(n_j, n_j);
+    force_bias_.resize(n_j);
+    vq_.resize(n_j);
+    jacobian_.resize(3, n_j);
+    null_space_.resize(n_j - n_s, n_j);
+    null_space_i_.resize(n_j, n_j);
+
+    G_ = Eigen::MatrixXd::Zero(n_v, n_v);
     g0_.resize(n_v);
     CE_.resize(n_v, n_s);
     ce0_.resize(n_s);
     CI_.resize(n_v, n_ci);
-    ci0_ = Eigen::VectorXf::Zero(n_ci);
+    ci0_ = Eigen::VectorXd::Zero(n_ci);
 }
 
 void WholeBodyController::Initialize(utils::ParamDictCRef dict)
@@ -97,8 +95,13 @@ void WholeBodyController::Initialize(utils::ParamDictCRef dict)
 
     q_f_ = ReadParOrDie(dict, PARAM_WITH_NS(force_loss, control/WBC));
     q_j_ = ReadParOrDie(dict, PARAM_WITH_NS(acc_loss, control/WBC));
-    friction_ = ReadParOrDie(
+    ground_friction_ = ReadParOrDie(
                 dict, PARAM_WITH_NS(ground_friction, physics));
+
+    gravity_ = Eigen::Vector3d(
+                ReadParOrDie(dict, PARAM_WITH_NS(gravity_x, physics)),
+                ReadParOrDie(dict, PARAM_WITH_NS(gravity_y, physics)),
+                ReadParOrDie(dict, PARAM_WITH_NS(gravity_z, physics)));
 
     for(int i = 0; i < n_s; i++)
         G_(i, i) = q_j_;
@@ -111,14 +114,14 @@ void WholeBodyController::Initialize(utils::ParamDictCRef dict)
         int row_offset = n_s + i * 3;
         int col_offset = i * 4;
 
-        CI_(row_offset + 0, col_offset + 0) =     - 1.0;
-        CI_(row_offset + 2, col_offset + 0) = friction_;
-        CI_(row_offset + 0, col_offset + 1) =       1.0;
-        CI_(row_offset + 2, col_offset + 1) = friction_;
-        CI_(row_offset + 1, col_offset + 2) =     - 1.0;
-        CI_(row_offset + 2, col_offset + 2) = friction_;
-        CI_(row_offset + 1, col_offset + 3) =       1.0;
-        CI_(row_offset + 2, col_offset + 3) = friction_;
+        CI_(row_offset + 0, col_offset + 0) =            - 1.0;
+        CI_(row_offset + 2, col_offset + 0) = ground_friction_;
+        CI_(row_offset + 0, col_offset + 1) =              1.0;
+        CI_(row_offset + 2, col_offset + 1) = ground_friction_;
+        CI_(row_offset + 1, col_offset + 2) =            - 1.0;
+        CI_(row_offset + 2, col_offset + 2) = ground_friction_;
+        CI_(row_offset + 1, col_offset + 3) =              1.0;
+        CI_(row_offset + 2, col_offset + 3) = ground_friction_;
     }
 }
 
@@ -163,27 +166,19 @@ void WholeBodyController::SetRefFootForces(
 
 void WholeBodyController::Update()
 {
-//    static bool t = false;
     boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
     assert(model);
 
     message::FloatingBaseState torso_state = model->TorsoState();
-    const Eigen::MatrixXd mass = model->MassMatrix();
-    const Eigen::VectorXd bias = model->BiasForces();
-    const Eigen::MatrixXd inv_m = mass.inverse();
-    const Eigen::VectorXd vq = model->Vq();
-    const Eigen::Vector3d gravity_(0, 0, 9.8);
+    mass_ = model->MassMatrix();
+    force_bias_ = model->BiasForces();
+    inv_m_ = mass_.inverse();
+    vq_ = model->Vq();
 
-    CE_.topRows<n_s>() = mass.topLeftCorner<n_s, n_s>().cast<float>();
-
-    // A typical WBC should compute desired joints' position, velocity
-    // and effort according to the given tasks.
-    // However, the first two works are finished by FootPosController,
-    // so here the WBC only needs to compute effort.
+    CE_.topRows<n_s>() = mass_.topLeftCorner<n_s, n_s>();
 
     // command acceleration contains error feedback:
     // a_cmd = a_desired + Kp * delta_x + Kd * delta_v
-
     Eigen::Vector3d a_cmd;
 
     // The first is body rotational acceleration task.
@@ -197,20 +192,19 @@ void WholeBodyController::Update()
     // rotational acceleration task is computed in torso frame.
     // As a result, velocity difference should be transformed
     // into local frame, while jacobian is simpliy identidy.
-    a_cmd = torso_acc_rot_task_
+    a_cmd = torso_state.rot.conjugate() * torso_acc_rot_task_
             + kp_body_rotation_ * QuatToSO3(rot_pos_err)
             + kd_body_rotation_
               * (rot_pos_err * torso_state_task_.rot_vel
                  - torso_state.rot_vel);
 
-    Eigen::MatrixXd jacobian = Eigen::MatrixXd::Zero(3, n_j);
-    jacobian.block<3, 3>(0, 0).diagonal().setOnes();
+    jacobian_.setZero();
+    jacobian_.block<3, 3>(0, 0).diagonal().setOnes();
 
     // aq is the desired joint acceleration, which will be
     // iteratively updated to complete the tasks.
     bool invertable;
-    Eigen::VectorXd aq = DCInv(jacobian, inv_m, invertable) * a_cmd;
-//    LOG(INFO) << "round 0, daq = " << aq.transpose();
+    Eigen::VectorXd aq = DCInv(jacobian_, inv_m_, invertable) * a_cmd;
 
     // The second task is body linear acceleration task.
     a_cmd = torso_acc_linear_task_
@@ -224,11 +218,11 @@ void WholeBodyController::Update()
 //    Eigen::MatrixXd null_space
 //            = Eigen::MatrixXd::Identity(n_j, n_j)
 //            - jacobian.transpose() * jacobian;
-    Eigen::MatrixXd null_space = Eigen::MatrixXd::Zero(n_j - n_s, n_j);
-    null_space.rightCols<n_j - n_s>().diagonal().setOnes();
+    null_space_.setZero();
+    null_space_.rightCols<n_j - n_s>().diagonal().setOnes();
 
-    jacobian.block<3, 3>(0, 0).diagonal().setZero();
-    jacobian.block<3, 3>(0, 3).diagonal().setOnes();
+    jacobian_.block<3, 3>(0, 0).diagonal().setZero();
+    jacobian_.block<3, 3>(0, 3).diagonal().setOnes();
 
     // Here, null_space is very simple
     // (diagonal with first 3 elements zero).
@@ -236,10 +230,10 @@ void WholeBodyController::Update()
 //    aq += null_space * DCInv(jacobian * null_space, inv_m, invertable)
 //            * (a_cmd - jacobian * aq);
     aq.tail<n_j - 3>()
-            += (DCInv(jacobian, inv_m, invertable)
+            += (DCInv(jacobian_, inv_m_, invertable)
                 * (a_cmd - aq.segment<3>(3))).tail<n_j - 3>();
 
-    Eigen::VectorXf res_opt(n_v);
+    Eigen::VectorXd res_opt(n_v);
     std::array<Eigen::MatrixXd, 4> local_jacob;
 
     bool leg_inv[4]; // whether leg jacobian is invertable
@@ -259,12 +253,11 @@ void WholeBodyController::Update()
                   * (foot_state_task_[i].vel
                      - model->FootVel(static_cast<message::LegName>(i)));
 
-        null_space.applyOnTheRight(Eigen::MatrixXd::Identity(n_j, n_j)
-                                   - jacobian.transpose() * jacobian);
-        jacobian = model->FullJacob(static_cast<message::LegName>(i));
-
-//        if(!t)
-//            LOG(INFO) << null_space;
+        // null_space_i_ = Identity() - jacobian.transpose() * jacobian
+        null_space_i_ = - jacobian_.transpose() * jacobian_;
+        null_space_i_.diagonal().array() += 1.;
+        null_space_.applyOnTheRight(null_space_i_);
+        jacobian_ = model->FullJacob(static_cast<message::LegName>(i));
 
         // The first 6 elements of aq is decided completely
         // by torso acceleration.
@@ -273,20 +266,18 @@ void WholeBodyController::Update()
         // The above derivation indicates that the top 6 rows
         // of the null_space matrix are all zero.
         // And which we can take advantage of it.
-        aq.tail<n_f>() += null_space
-                * DCInv(jacobian.rightCols<n_f>() * null_space,
-                        inv_m, leg_inv[i])
+        aq.tail<n_f>() += null_space_
+                * DCInv(jacobian_.rightCols<n_f>() * null_space_,
+                        inv_m_, leg_inv[i])
                 * (a_cmd - model->VJDotVq(static_cast<message::LegName>(i))
-                   - jacobian * aq);
-
-//        LOG(INFO) << "round " << i + 2 << ", daq = " << daq.transpose();
+                   - jacobian_ * aq);
 
         if (foot_contact_[i])
         {
             CE_.middleRows<3>(n_s + i * 3)
-                    = - jacobian.leftCols<n_s>().cast<float>();
-            local_jacob[i] = jacobian.rightCols<n_j - n_s>();
-            res_opt.segment<3>(n_s + i * 3) = ref_force_[i].cast<float>();
+                    = - jacobian_.leftCols<n_s>();
+            local_jacob[i] = jacobian_.rightCols<n_j - n_s>();
+            res_opt.segment<3>(n_s + i * 3) = ref_force_[i];
         }
         else // Disable foot force if foot i is not in contact.
         {
@@ -296,44 +287,28 @@ void WholeBodyController::Update()
     }
 
     // compensate gravity
-    aq.segment<3>(3) += torso_state.rot.conjugate() * gravity_;
-    res_opt.head<n_s>() = aq.head<n_s>().cast<float>();
-    Eigen::VectorXf res0 = res_opt;
+    aq.segment<3>(3) -= torso_state.rot.conjugate() * gravity_;
+    res_opt.head<n_s>() = aq.head<n_s>();
+    Eigen::VectorXd res0 = res_opt;
     g0_ = - res_opt.cwiseProduct(G_.diagonal());
-    ce0_ = bias.head<n_s>().cast<float>()
-            + mass.topRightCorner<n_s, n_j - n_s>().cast<float>()
-              * aq.tail<n_j - n_s>().cast<float>();
+    ce0_ = force_bias_.head<n_s>()
+            + mass_.topRightCorner<n_s, n_j - n_s>() * aq.tail<n_j - n_s>();
 
     /*float opt_res = */optimization::SolveQuadProg(
                 G_, g0_, CE_, ce0_, CI_, ci0_, res_opt);
 
-//    if(!t){
-//        //    LOG(INFO) << "error: " << opt_res;
-//        LOG(INFO) << "ref: " << aq.transpose();
-//        LOG(INFO) << "G: " << std::endl << G_;
-//        LOG(INFO) << "g0: " << g0_.transpose();
-//        LOG(INFO) << "CE: " << std::endl << CE_;
-//        LOG(INFO) << "ce0: " << ce0_.transpose();
-//        LOG(INFO) << "CI: " << std::endl << CI_;
-//        LOG(INFO) << "ci0: " << ci0_.transpose();
-//        //    LOG(INFO) << "acceleration: " << res_opt.segment<6>(0).transpose();
-//        //    LOG(INFO) << "forces: " << res_opt.segment<12>(6).transpose();
-//        t = true;
-//    }
-
     // tau = H * aq + C - J.transpose() * f_foot
     Eigen::VectorXd torq
-            = mass.bottomLeftCorner<n_j - n_s, n_s>()
-              * res_opt.head<n_s>().cast<double>()
-            + mass.bottomRightCorner<n_j - n_s, n_j - n_s>()
+            = mass_.bottomLeftCorner<n_j - n_s, n_s>() * res_opt.head<n_s>()
+            + mass_.bottomRightCorner<n_j - n_s, n_j - n_s>()
               * aq.tail<n_j - n_s>()
-            + bias.tail<n_j - n_s>();
+            + force_bias_.tail<n_j - n_s>();
 
     for (int i = 0; i < 4; i++)
     {
         if (foot_contact_[i])
             torq.noalias() -= local_jacob[i].transpose()
-                    * res_opt.segment<3>(n_s + i * 3).cast<double>();
+                    * res_opt.segment<3>(n_s + i * 3);
     }
 
     torq -= model->Friction();
@@ -345,7 +320,6 @@ void WholeBodyController::Update()
             cmd_->at(i * 3    ).torq = torq(i * 3    );
             cmd_->at(i * 3 + 1).torq = torq(i * 3 + 1);
             cmd_->at(i * 3 + 2).torq = torq(i * 3 + 2);
-//            LOG(INFO) << "wbc used at leg " << i;
         }
         else
         {
@@ -354,13 +328,6 @@ void WholeBodyController::Update()
             cmd_->at(i * 3 + 2).torq = 0;
         }
     }
-
-//    LOG(INFO) << "force x: "
-//              << res_opt(n_s + 0) + res_opt(n_s + 3)
-//                 + res_opt(n_s + 6) + res_opt(n_s + 9);
-
-//    LOG(INFO) << "desired acc x: " << aq(3);
-//    LOG(INFO) << "actual  acc x: " << res_opt(3);
 }
 
 } /* control */
