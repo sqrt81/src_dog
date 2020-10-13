@@ -174,7 +174,7 @@ void ModelPredictiveController::Update()
         // Build x0_[i], be aware to convert velocities into global frame.
         if(i >= 1)
         {
-            const int offset = (i - 1) * n_s;
+            const int offset = (pred_horizon_ - i) * n_s;
             Aqp_C_X0_(offset    ) = fb.rot.w();
             Aqp_C_X0_(offset + 1) = fb.rot.x();
             Aqp_C_X0_(offset + 2) = fb.rot.y();
@@ -233,15 +233,14 @@ void ModelPredictiveController::Update()
         // While system matrixs Ai, Bi indexes from 0 to pred_horizon_ - 1,
         // x0_i indexes from 1 to pred_horizon_.
         const message::FloatingBaseState& fb = desired_traj_[pred_horizon_];
-        const int offset = (pred_horizon_ - 1) * n_s;
-        Aqp_C_X0_(offset    ) = fb.rot.w();
-        Aqp_C_X0_(offset + 1) = fb.rot.x();
-        Aqp_C_X0_(offset + 2) = fb.rot.y();
-        Aqp_C_X0_(offset + 3) = fb.rot.z();
-        Aqp_C_X0_.segment<3>(offset + 4) = fb.trans;
-        Aqp_C_X0_.segment<3>(offset + 7) = fb.rot * fb.rot_vel;
-        Aqp_C_X0_.segment<3>(offset + 10) = fb.rot * fb.linear_vel;
-        Aqp_C_X0_(offset + n_s - 1) = 1.;
+        Aqp_C_X0_(0) = fb.rot.w();
+        Aqp_C_X0_(1) = fb.rot.x();
+        Aqp_C_X0_(2) = fb.rot.y();
+        Aqp_C_X0_(3) = fb.rot.z();
+        Aqp_C_X0_.segment<3>(4) = fb.trans;
+        Aqp_C_X0_.segment<3>(7) = fb.rot * fb.rot_vel;
+        Aqp_C_X0_.segment<3>(10) = fb.rot * fb.linear_vel;
+        Aqp_C_X0_(n_s - 1) = 1.;
     }
 
     Eigen::Matrix<double, n_s, 1> Ai_x_cur;
@@ -286,6 +285,9 @@ void ModelPredictiveController::Update()
                     = A_[j] * Aqp_Bqp_.block<n_s, n_f>(row + n_s, col);
         }
     }
+
+//    LOG(INFO) << "X0     " << Aqp_C_X0_.tail<n_s>().transpose();
+//    LOG(INFO) << "X_real " << Ai_x_cur.transpose();
 
     G_ = Aqp_Bqp_.transpose() * state_weight_.asDiagonal() * Aqp_Bqp_;
     G_.diagonal().array() += force_weight_;
@@ -354,10 +356,13 @@ void ModelPredictiveController::Update()
         force_i[3] = pred_force_.segment<3>(i * n_f + 9);
     }
 
-    LOG(INFO) << "fl: " << foot_force_[0][0].transpose();
-    LOG(INFO) << "fr: " << foot_force_[0][1].transpose();
-    LOG(INFO) << "bl: " << foot_force_[0][2].transpose();
-    LOG(INFO) << "br: " << foot_force_[0][3].transpose() << std::endl;
+//    LOG(INFO) << "A0" << std::endl << A_[0];
+//    LOG(INFO) << "B0" << std::endl << B_[0];
+
+//    LOG(INFO) << "fl: " << foot_force_[0][0].transpose();
+//    LOG(INFO) << "fr: " << foot_force_[0][1].transpose();
+//    LOG(INFO) << "bl: " << foot_force_[0][2].transpose();
+//    LOG(INFO) << "br: " << foot_force_[0][3].transpose() << std::endl;
 
     last_update_interval_ -= update_period_;
 }

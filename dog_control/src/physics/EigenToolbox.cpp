@@ -41,6 +41,24 @@ Eigen::Matrix4d RightQuatToMatrix(const Eigen::Quaterniond &q)
     return quat_mat;
 }
 
+Eigen::Vector3d QuatToSO3(const Eigen::Quaterniond &quat)
+{
+    Eigen::Vector3d so3;
+    so3.x() = quat.x();
+    so3.y() = quat.y();
+    so3.z() = quat.z();
+
+    const double norm = so3.norm();
+    const double theta = 2.0 * asin(norm);
+
+    if (abs(theta) > 1e-6)
+        so3 *= theta / norm;
+    else
+        so3.setZero();
+
+    return so3;
+}
+
 } /* physics */
 
 } /* dog_control */

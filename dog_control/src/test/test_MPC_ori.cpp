@@ -14,7 +14,7 @@
 
 using namespace dog_control;
 
-int main(int argc, char** argv)
+int test_MPC_ori(int argc, char** argv)
 {
     ros::init(argc, argv, "~");
     std::string config_file;
@@ -83,7 +83,7 @@ int main(int argc, char** argv)
         fake_foot_contact[i] = true;
     }
 
-    const double angle = M_PI_2 * 0.;
+    const double angle = M_PI_2 * 0.8;
 
     // temp standup function
     for (int i = 0; i < 500; i++)
@@ -131,7 +131,7 @@ int main(int argc, char** argv)
     }
 
     conf.kd = 1;
-    conf.kp = 3;
+    conf.kp = 5;
 
     for (int i = 0; i < 4; i++)
     {
@@ -140,7 +140,7 @@ int main(int argc, char** argv)
     }
 
     int iter = 0;
-    constexpr double len = 0.0;
+    constexpr double len = 0.2;
     constexpr double duration = 400;
     constexpr double t = duration / 1000.;
 

@@ -1,5 +1,6 @@
 #include "dog_control/control/WholeBodyController.h"
 #include "dog_control/optimization/QuadSolver.h"
+#include "dog_control/physics/EigenToolbox.h"
 #include "dog_control/utils/MiniLog.h"
 #include "dog_control/utils/Math.h"
 
@@ -38,24 +39,6 @@ inline Eigen::MatrixXd DCInv(const Eigen::MatrixXd &A,
         invertable = true;
         return tmp * AHA.inverse();
     }
-}
-
-inline Eigen::Vector3d QuatToSO3(const Eigen::Quaterniond &quat)
-{
-    Eigen::Vector3d so3;
-    so3.x() = quat.x();
-    so3.y() = quat.y();
-    so3.z() = quat.z();
-
-    const double norm = so3.norm();
-    const double theta = 2.0 * asin(norm);
-
-    if (abs(theta) > 1e-6)
-        so3 *= theta / norm;
-    else
-        so3.setZero();
-
-    return so3;
 }
 
 } /* anonymous */
@@ -193,7 +176,7 @@ void WholeBodyController::Update()
     // As a result, velocity difference should be transformed
     // into local frame, while jacobian is simpliy identidy.
     a_cmd = torso_state.rot.conjugate() * torso_acc_rot_task_
-            + kp_body_rotation_ * QuatToSO3(rot_pos_err)
+            + kp_body_rotation_ * physics::QuatToSO3(rot_pos_err)
             + kd_body_rotation_
               * (rot_pos_err * torso_state_task_.rot_vel
                  - torso_state.rot_vel);
@@ -303,12 +286,13 @@ void WholeBodyController::Update()
             + mass_.bottomRightCorner<n_j - n_s, n_j - n_s>()
               * aq.tail<n_j - n_s>()
             + force_bias_.tail<n_j - n_s>();
+    torq.setZero();
 
     for (int i = 0; i < 4; i++)
     {
         if (foot_contact_[i])
-            torq.noalias() -= local_jacob[i].transpose()
-                    * res_opt.segment<3>(n_s + i * 3);
+            torq.noalias() -= local_jacob[i].transpose() * ref_force_[i];
+//                    * res_opt.segment<3>(n_s + i * 3);
     }
 
     torq -= model->Friction();
