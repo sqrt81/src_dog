@@ -1,6 +1,6 @@
 #include "dog_control/utils/CubicSpline.h"
 
-#include <cassert>
+#include "dog_control/utils/MiniLog.h"
 
 namespace dog_control
 {
@@ -8,14 +8,11 @@ namespace dog_control
 namespace utils
 {
 
-CubicSpline::CubicSpline()
- : t0_(0), a0_(0), a1_(0), a2_(0), a3_(0)
-{}
-
-CubicSpline::CubicSpline(double t1, double x1, double v1,
-                         double t2, double x2, double v2)
+template <typename T>
+CubicSpline<T>::CubicSpline(double t1, T x1, T v1,
+                         double t2, T x2, T v2)
 {
-    assert(t1 != t2);
+    CHECK(t1 != t2);
 
     t0_ = t1;
     a0_ = x1;
@@ -27,7 +24,8 @@ CubicSpline::CubicSpline(double t1, double x1, double v1,
     a3_ = (par1 * inv_delta_t - a2_) * inv_delta_t;
 }
 
-void CubicSpline::Sample(double t, double& x, double& v) const
+template <typename T>
+void CubicSpline<T>::Sample(double t, T& x, T& v) const
 {
     double delta_t = t - t0_;
     double delta_t_2 = delta_t * delta_t;
@@ -36,7 +34,8 @@ void CubicSpline::Sample(double t, double& x, double& v) const
     v = 3 * a3_ * delta_t_2 + 2 * a2_ * delta_t + a1_;
 }
 
-void CubicSpline::Sample(double t, double &x, double &v, double& a) const
+template <typename T>
+void CubicSpline<T>::Sample(double t, T &x, T &v, T& a) const
 {
     double delta_t = t - t0_;
     double delta_t_2 = delta_t * delta_t;

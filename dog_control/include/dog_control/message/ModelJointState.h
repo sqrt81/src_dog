@@ -15,13 +15,22 @@ struct FloatingBaseState
     Eigen::Vector3d trans;
     Eigen::Quaterniond rot;
 
-    // note that base velocity is measured in base frame,
+    // note that base velocity is expressed in base frame,
     // not in fixed base (global) frame
     Eigen::Vector3d linear_vel;
     Eigen::Vector3d rot_vel;
 };
 
 using FBStateCRef = const FloatingBaseState&;
+
+struct FloatingBaseStateWithAcc
+{
+    FloatingBaseState state;
+
+    // acceleration is also expressed in base frame.
+    Eigen::Vector3d linear_acc;
+    Eigen::Vector3d rot_acc;
+};
 
 struct StampedFloatingBaseState
 {

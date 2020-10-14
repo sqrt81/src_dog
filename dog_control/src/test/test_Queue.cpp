@@ -21,22 +21,16 @@ int test_Queue()
         q.Pop();
     }
 
-    for(int i = 0; i < 10; i++)
-    {
-        q.Push(i + 10);
+    q.EraseTail(7);
 
-        LOG(INFO) << "tail: " << q[q.size() - 1] << " size: " << q.size();
-    }
-
-    LOG(INFO) << "random access: " << q[12];
     LOG(INFO) << "random access: " << q[5 ];
     LOG(INFO) << "random access: " << q[3 ];
 
-    for(int i = 0; i < 15; i++)
-    {
-        LOG(INFO) << "head: " << q[0];
-        q.Pop();
-    }
+    LOG(INFO) << q.size();
+
+    q.Clear();
+
+    LOG(INFO) << q.size();
 
     return 0;
 }

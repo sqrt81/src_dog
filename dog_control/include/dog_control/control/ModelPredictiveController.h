@@ -22,6 +22,7 @@ class ModelPredictiveController
 protected:
     using FBState = message::FloatingBaseState;
     using FBSCRef = message::FBStateCRef;
+
 public:
     using TorsoTraj = std::vector<FBState>;
     using FeetPosSeq = std::vector<std::array<Eigen::Vector3d, 4>>;
@@ -34,6 +35,8 @@ public:
     void ConnectWBC(boost::shared_ptr<control::WholeBodyController> WBC);
 
     void ConnectModel(boost::shared_ptr<physics::DogModel> model);
+
+    void ConnectClock(boost::shared_ptr<hardware::ClockBase> clock);
 
     void SetDesiredTorsoTrajectory(const TorsoTraj &torso_traj);
 
@@ -65,10 +68,11 @@ private:
     double update_period_;
 
     // Parameter
-    double last_update_interval_;   // time elapsed after the last prediction
+    double last_update_time_;       // time stamp of last prediction
     double update_dt_;              // basic control period
 
     boost::weak_ptr<control::WholeBodyController> WBC_ptr_;
+    boost::weak_ptr<hardware::ClockBase> clock_ptr_;
     boost::weak_ptr<physics::DogModel> model_ptr_;
 
     FBState cur_state_;

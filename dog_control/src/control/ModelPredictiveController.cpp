@@ -1,6 +1,7 @@
 #include "dog_control/control/ModelPredictiveController.h"
 
 #include "dog_control/control/WholeBodyController.h"
+#include "dog_control/hardware/ClockBase.h"
 #include "dog_control/optimization/QuadSolver.h"
 #include "dog_control/physics/EigenToolbox.h"
 #include "dog_control/physics/DogModel.h"
@@ -69,7 +70,7 @@ void ModelPredictiveController::Initialize(utils::ParamDictCRef dict)
         state_weight_.segment<n_s>(i * n_s) = state_weight_.head<n_s>();
 
     update_dt_ = ReadParOrDie(dict, PARAM_WITH_NS(control_period, control));
-    last_update_interval_ = 0.;
+    last_update_time_ = 0.;
 
     A_.resize(pred_horizon_, Eigen::MatrixXd::Zero(n_s, n_s));
     B_.resize(pred_horizon_, Eigen::MatrixXd::Zero(n_s, n_f));
@@ -125,17 +126,19 @@ void ModelPredictiveController::SetFeetPose(
 
 void ModelPredictiveController::Update()
 {
-    last_update_interval_ += update_dt_;
-
     boost::shared_ptr<WholeBodyController> wbc = WBC_ptr_.lock();
     CHECK(wbc) << "[MPC] wbc is not set!";
 
-    const int cur_index
-            = static_cast<int>(last_update_interval_ / pred_interval_);
+    boost::shared_ptr<hardware::ClockBase> clock = clock_ptr_.lock();
+    CHECK(clock) << "[MPC] clock is not set!";
+
+    const double interval = clock->Time() - last_update_time_;
+
+    const int cur_index = static_cast<int>(interval / pred_interval_);
     wbc->SetRefFootForces(foot_force_[cur_index],
                           feet_contact_seq_[cur_index]);
 
-    if(last_update_interval_ < update_period_)
+    if(interval < update_period_)
         return;
 
     CHECK(desired_traj_.size() >= static_cast<unsigned>(pred_horizon_) + 1)
@@ -357,7 +360,7 @@ void ModelPredictiveController::Update()
 //    LOG(INFO) << "bl: " << foot_force_[0][2].transpose();
 //    LOG(INFO) << "br: " << foot_force_[0][3].transpose() << std::endl;
 
-    last_update_interval_ -= update_period_;
+    last_update_time_ = clock->Time();
 }
 
 } /* control */

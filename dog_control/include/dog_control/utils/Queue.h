@@ -21,13 +21,27 @@ public:
 
     void Pop();
 
+    void Clear();
+
+    void EraseTail(int n_erase);
+
+    void EraseHead(int n_erase);
+
+    int size() const;
+
     T& operator[] (int id);
 
     const T& operator[] (int id) const;
 
-    int size() const;
+    T& Head();
 
-public:
+    const T& Head() const;
+
+    T& Tail();
+
+    const T& Tail() const;
+
+private:
     void Expand();
 
     std::vector<T> base_;

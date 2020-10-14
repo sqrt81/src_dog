@@ -2,6 +2,7 @@
 #define DOG_CONTROL_HARDWARE_SIMULATEDHARDWARE
 
 #include "dog_control/hardware/HardwareBase.h"
+#include "dog_control/hardware/ClockBase.h"
 
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
@@ -43,6 +44,15 @@ private:
     ros::Publisher joint_cmd_pub_;
     ros::Subscriber imu_sub_;
     ros::Subscriber joint_state_sub_;
+};
+
+class SimulatedClock : public ClockBase
+{
+public:
+    void Update() override
+    {
+        stamp_ = ros::Time::now().toSec();
+    }
 };
 
 } /* hardware */
