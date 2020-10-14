@@ -23,6 +23,14 @@ struct FloatingBaseState
 
 using FBStateCRef = const FloatingBaseState&;
 
+struct StampedFloatingBaseState
+{
+    double stamp;
+    FloatingBaseState state;
+};
+
+using StampedFBStateCRef = const StampedFloatingBaseState&;
+
 /**
  * @brief JointState
  * Position and velocity for all the joints.

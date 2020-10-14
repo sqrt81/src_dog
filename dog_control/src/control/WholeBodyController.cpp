@@ -19,8 +19,6 @@ constexpr int n_f = 3 * 4;     // 3 force params (fx, fy, fz) per foot
 constexpr int n_v = n_s + n_f; // revolute joints are excluded
 constexpr int n_ci = 4 * 4;    // 4 inequality constraints per foot
 
-constexpr float singularity = 1e-3;
-
 inline Eigen::MatrixXd DCInv(const Eigen::MatrixXd &A,
                              const Eigen::MatrixXd &inv_H,
                              bool& invertable)
@@ -29,7 +27,7 @@ inline Eigen::MatrixXd DCInv(const Eigen::MatrixXd &A,
     const Eigen::MatrixXd AHA = A * tmp;
 
     // If singularity occurs, disable this term.
-    if (utils::abs(AHA.determinant()) < singularity)
+    if (utils::is_zero(AHA.determinant()))
     {
         invertable = false;
         return Eigen::MatrixXd::Zero(A.cols(), A.rows());
@@ -286,13 +284,12 @@ void WholeBodyController::Update()
             + mass_.bottomRightCorner<n_j - n_s, n_j - n_s>()
               * aq.tail<n_j - n_s>()
             + force_bias_.tail<n_j - n_s>();
-    torq.setZero();
 
     for (int i = 0; i < 4; i++)
     {
         if (foot_contact_[i])
-            torq.noalias() -= local_jacob[i].transpose() * ref_force_[i];
-//                    * res_opt.segment<3>(n_s + i * 3);
+            torq.noalias() -= local_jacob[i].transpose()
+                    * res_opt.segment<3>(n_s + i * 3);
     }
 
     torq -= model->Friction();

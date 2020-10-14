@@ -13,7 +13,7 @@ namespace control
 namespace
 {
 
-constexpr int n_s = 14;         // number of stats
+constexpr int n_s = 13;         // number of stats
 constexpr int n_f = 12;         // number of forces
 
 } /* anonymous */
@@ -51,13 +51,13 @@ void ModelPredictiveController::Initialize(utils::ParamDictCRef dict)
                 dict, PARAM_WITH_NS(update_period, control/MPC));
 
     state_weight_.resize(pred_horizon_ * n_s);
-    state_weight_.segment<4>(0).setConstant(
+    state_weight_.segment<3>(0).setConstant(
                 ReadParOrDie(dict, PARAM_WITH_NS(rot_w, control/MPC)));
-    state_weight_.segment<3>(4).setConstant(
+    state_weight_.segment<3>(3).setConstant(
                 ReadParOrDie(dict, PARAM_WITH_NS(pos_w, control/MPC)));
-    state_weight_.segment<3>(7).setConstant(
+    state_weight_.segment<3>(6).setConstant(
                 ReadParOrDie(dict, PARAM_WITH_NS(rot_vel_w, control/MPC)));
-    state_weight_.segment<3>(10).setConstant(
+    state_weight_.segment<3>(9).setConstant(
                 ReadParOrDie(dict, PARAM_WITH_NS(vel_w, control/MPC)));
     state_weight_(n_s - 1) = 0;
     force_weight_ = ReadParOrDie(dict, PARAM_WITH_NS(force_w, control/MPC));
@@ -154,6 +154,8 @@ void ModelPredictiveController::Update()
     cur_state_ = model->TorsoState();
 
     const double t_t_2 = utils::square(pred_interval_) * 0.5;
+    const Eigen::Quaterniond rot_base = desired_traj_[0].rot.conjugate();
+    const Eigen::Matrix3d rot_base_mat = rot_base.toRotationMatrix();
 
     int foot_contact_cnt = 0;
 
@@ -175,31 +177,25 @@ void ModelPredictiveController::Update()
         if(i >= 1)
         {
             const int offset = (pred_horizon_ - i) * n_s;
-            Aqp_C_X0_(offset    ) = fb.rot.w();
-            Aqp_C_X0_(offset + 1) = fb.rot.x();
-            Aqp_C_X0_(offset + 2) = fb.rot.y();
-            Aqp_C_X0_(offset + 3) = fb.rot.z();
-            Aqp_C_X0_.segment<3>(offset + 4) = fb.trans;
-            Aqp_C_X0_.segment<3>(offset + 7) = fb.rot * fb.rot_vel;
-            Aqp_C_X0_.segment<3>(offset + 10) = fb.rot * fb.linear_vel;
+            Aqp_C_X0_.segment<3>(offset    )
+                    = physics::QuatToSO3(rot_base * fb.rot);
+            Aqp_C_X0_.segment<3>(offset + 3) = fb.trans;
+            Aqp_C_X0_.segment<3>(offset + 6) = fb.rot * fb.rot_vel;
+            Aqp_C_X0_.segment<3>(offset + 9) = fb.rot * fb.linear_vel;
             Aqp_C_X0_(offset + n_s - 1) = 1.;
         }
 
         // Build A_[i].
-        Ai.diagonal().tail<n_s - 4>().setOnes();
+        Ai.diagonal().setOnes();
 
-        // q[i + 1] = cos(v_rot[i] * dt) * q[i] + Q * (v_rot[i] * dt)
-        Ai.diagonal().head<4>()
-                .setConstant(1 - fb.rot_vel.squaredNorm() * t_t_2);
-        Ai.block<4, 3>(0, 7)
-                = physics::RightQuatToMatrix(fb.rot).rightCols<3>()
-                * pred_interval_;
+        // theta[i + 1] = theta[i] + v_rot_rot_base[i] * dt
+        Ai.block<3, 3>(0, 6) = pred_interval_ * rot_base_mat;
 
         // p[i + 1] = p[i] + v_linear[i] * dt
         // v_lin[i + 1] = v_lin[i] + a_foot[i] * dt + gravity_ * dt
-        Ai.block<3, 3>(4, 10).diagonal().setConstant(pred_interval_);
-        Ai.block<3, 1>(4, 13) = gravity_ * t_t_2;
-        Ai.block<3, 1>(10, 13) = gravity_ * pred_interval_;
+        Ai.block<3, 3>(3, 9).diagonal().setConstant(pred_interval_);
+        Ai.block<3, 1>(3, 12) = gravity_ * t_t_2;
+        Ai.block<3, 1>(9, 12) = gravity_ * pred_interval_;
 
         // Build B_[i].
         for (int j = 0; j < 4; j++)
@@ -216,16 +212,16 @@ void ModelPredictiveController::Update()
                     = physics::ToLowerMatrix(feet_pos_seq_[i][j] - fb.trans);
 
             // a_foot[i] = foot_force[i] / m
-            Bi.block<3, 3>(10, j * 3).diagonal().setConstant(
+            Bi.block<3, 3>(9, j * 3).diagonal().setConstant(
                         inv_mass_ * pred_interval_);
-            Bi.block<3, 3>(4, j * 3).diagonal().setConstant(
+            Bi.block<3, 3>(3, j * 3).diagonal().setConstant(
                         inv_mass_ * t_t_2);
 
             // a_rot[i] = inertia.inverse() * (rel_pos x foot_force[i])
-            Bi.block<3, 3>(7, j * 3)
+            Bi.block<3, 3>(6, j * 3)
                     = inv_iner_global * rel_pos * pred_interval_;
-            Bi.block<4, 3>(0, j * 3)
-                    = Ai.block<4, 3>(0, 7) * Bi.block<3, 3>(7, j * 3) * 0.5;
+            Bi.block<3, 3>(0, j * 3)
+                    = Ai.block<3, 3>(0, 6) * Bi.block<3, 3>(6, j * 3) * 0.5;
         }
     }
 
@@ -233,13 +229,10 @@ void ModelPredictiveController::Update()
         // While system matrixs Ai, Bi indexes from 0 to pred_horizon_ - 1,
         // x0_i indexes from 1 to pred_horizon_.
         const message::FloatingBaseState& fb = desired_traj_[pred_horizon_];
-        Aqp_C_X0_(0) = fb.rot.w();
-        Aqp_C_X0_(1) = fb.rot.x();
-        Aqp_C_X0_(2) = fb.rot.y();
-        Aqp_C_X0_(3) = fb.rot.z();
-        Aqp_C_X0_.segment<3>(4) = fb.trans;
-        Aqp_C_X0_.segment<3>(7) = fb.rot * fb.rot_vel;
-        Aqp_C_X0_.segment<3>(10) = fb.rot * fb.linear_vel;
+        Aqp_C_X0_.segment<3>(0) = physics::QuatToSO3(rot_base * fb.rot);
+        Aqp_C_X0_.segment<3>(3) = fb.trans;
+        Aqp_C_X0_.segment<3>(6) = fb.rot * fb.rot_vel;
+        Aqp_C_X0_.segment<3>(9) = fb.rot * fb.linear_vel;
         Aqp_C_X0_(n_s - 1) = 1.;
     }
 
@@ -248,14 +241,11 @@ void ModelPredictiveController::Update()
     {
         // x0_0 is not used. Instead, current real state cur_state_ is used
         // as the initial state of MPC.
-        Ai_x_cur(0) = cur_state_.rot.w();
-        Ai_x_cur(1) = cur_state_.rot.x();
-        Ai_x_cur(2) = cur_state_.rot.y();
-        Ai_x_cur(3) = cur_state_.rot.z();
-        Ai_x_cur.segment<3>(4) = cur_state_.trans;
-        Ai_x_cur.segment<3>(7)
+        Ai_x_cur.segment<3>(0) = physics::QuatToSO3(rot_base * cur_state_.rot);
+        Ai_x_cur.segment<3>(3) = cur_state_.trans;
+        Ai_x_cur.segment<3>(6)
                 = cur_state_.rot * cur_state_.rot_vel;
-        Ai_x_cur.segment<3>(10)
+        Ai_x_cur.segment<3>(9)
                 = cur_state_.rot * cur_state_.linear_vel;
         Ai_x_cur(n_s - 1) = 1.;
     }

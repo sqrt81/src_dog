@@ -34,6 +34,12 @@ Eigen::Vector3d ToUpperVector(const Eigen::Matrix3d &lower_mat);
  */
 Eigen::Matrix4d RightQuatToMatrix(const Eigen::Quaterniond &q);
 
+/**
+ * @brief QuatToSO3
+ * Convert a quaternion to angle-axis form.
+ * The returned vector V's norm equals to the angle,
+ * and it is parallel to the axis (if its norm is not zero).
+ */
 Eigen::Vector3d QuatToSO3(const Eigen::Quaterniond &quat);
 
 } /* physics */

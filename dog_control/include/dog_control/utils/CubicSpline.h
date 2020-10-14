@@ -30,6 +30,14 @@ public:
      */
     void Sample(double t, double &x, double &v) const;
 
+    /**
+     * @brief Sample
+     * Obtain the value of the function and its
+     * first and second order derivative at time t.
+     * x = f(t), v = f'(t), a = f''(t)
+     */
+    void Sample(double t, double &x, double &v, double& a) const;
+
 private:
     double t0_;
     double a0_;

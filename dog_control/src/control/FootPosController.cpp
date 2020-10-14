@@ -99,7 +99,8 @@ void FootPosController::Update()
         const Eigen::Vector3d leg_joint =
                 model->InverseKinematics(
                     static_cast<message::LegName>(i),
-                    cmd_footstate_[i].pos, (i >= 2), true);
+                    cmd_footstate_[i].pos,
+                    config.knee_outwards, config.hip_outwards);
         offset_cmd[0].x_desired = leg_joint(0);
         offset_cmd[1].x_desired = leg_joint(1);
         offset_cmd[2].x_desired = leg_joint(2);
@@ -109,13 +110,13 @@ void FootPosController::Update()
         Eigen::Vector3d vel = cmd_footstate_[i].vel;
 
         // avoid singularity
-        if (utils::abs(jacob.determinant()) > 1e-3)
+        if (utils::is_zero(jacob.determinant()))
         {
-            vel = jacob.inverse() * vel;
+            vel = Eigen::Vector3d::Zero();
         }
         else
         {
-            vel = Eigen::Vector3d::Zero();
+            vel = jacob.inverse() * vel;
         }
 
         offset_cmd[0].v_desired = vel(0);

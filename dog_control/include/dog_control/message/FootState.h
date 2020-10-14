@@ -25,6 +25,10 @@ struct LegConfiguration
 
     double kp;
     double kd;
+
+    // used to decide inverse kinematics
+    bool hip_outwards;
+    bool knee_outwards;
 };
 
 using LegConfigCRef = const LegConfiguration&;

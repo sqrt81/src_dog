@@ -59,6 +59,8 @@ int test_WBC_torso(int argc, char** argv)
     std::endl(std::cout);
 
     message::LegConfiguration conf;
+    conf.hip_outwards = true;
+    conf.knee_outwards = true;
     conf.kd = 2;
     conf.kp = 100;
     std::array<Eigen::Vector3d, 4> fake_ref_footforce;

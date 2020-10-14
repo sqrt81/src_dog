@@ -17,9 +17,13 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Lua REQUIRED)
 find_package(Eigen3 REQUIRED)
 
+#link_directories("/usr/local/lib")
+#include_directories("/usr/local/include")
+#SET(qpOASES_LIBRARIES libqpOASES.a)
+
 file(GLOB_RECURSE ALL_SRCS "src/*.cpp")
 
-SET(CMAKE_BUILD_TYPE "Debug") 
+SET(CMAKE_BUILD_TYPE "Release") 
 SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
 SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
 
@@ -162,6 +166,7 @@ target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
   ${LUA_LIBRARIES}
   ${EIGEN3_LIBRARIES}
+#  ${qpOASES_LIBRARIES}
 )
 
 #############

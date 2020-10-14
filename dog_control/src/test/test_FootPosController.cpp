@@ -45,6 +45,8 @@ int testFootPosController(int argc, char** argv)
     controller->Update();
 
     message::LegConfiguration conf;
+    conf.hip_outwards = true;
+    conf.knee_outwards = true;
     conf.kd = 1;
     conf.kp = 100;
 

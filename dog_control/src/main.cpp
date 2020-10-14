@@ -7,7 +7,7 @@
 #include "dog_control/utils/Initializer.h"
 #include "dog_control/utils/Math.h"
 #include "dog_control/utils/MiniLog.h"
-
+#include "dog_control/physics/EigenToolbox.h"
 #include <ros/ros.h>
 
 #include <iostream>
@@ -68,8 +68,10 @@ int main(int argc, char** argv)
     std::endl(std::cout);
 
     message::LegConfiguration conf;
-    conf.kd = 10;
-    conf.kp = 100;
+    conf.hip_outwards = true;
+    conf.knee_outwards = true;
+    conf.kd = 0.1;
+    conf.kp = 0.3;
     std::array<Eigen::Vector3d, 4> fake_ref_footforce;
     std::array<bool, 4> fake_foot_contact;
     ros::Rate r(1. / dt);
@@ -83,13 +85,59 @@ int main(int argc, char** argv)
         fake_foot_contact[i] = true;
     }
 
-    const double angle = M_PI_2 * 0.;
+    const double angle = M_PI_2;
+    int iter = 0;
+
+    // compute desired trajectory
+    control::ModelPredictiveController::TorsoTraj torso_traj(6);
+    control::ModelPredictiveController::FeetPosSeq fseq(6);
+    control::ModelPredictiveController::FeetContactSeq fcseq(6);
 
     // temp standup function
     for (int i = 0; i < 500; i++)
     {
-        Eigen::AngleAxisd rot(i * angle / 500,
+        if (!ros::ok())
+            return 0;
+        iter++;
+        Eigen::AngleAxisd rot((i < 100 ? 0 :  i - 100) * angle / 400,
                               Eigen::Vector3d::UnitX());
+
+        if (iter % 10 == 1) // make sure mpc is inited in the first round
+        {
+            for (int j = 0; j < 6; j++)
+            {
+                int i2 = j * 20 + i;
+                if (i2 > 500)
+                    i2 = 500;
+
+                message::FloatingBaseState& fbs = torso_traj[j];
+                fbs.trans = {0, 0, 0.4 - i2 * 0.15 / 500};
+
+                i2 -= 100;
+                if (i2 < 0)
+                    i2 = 0;
+
+                fbs.rot = Eigen::AngleAxisd(i2 * angle / 400,
+                                            Eigen::Vector3d::UnitX());
+                fbs.linear_vel = {0, 0, 0};
+                fbs.rot_vel.setZero();
+
+                std::array<Eigen::Vector3d, 4>& fps = fseq[j];
+                std::array<bool, 4>& fcs = fcseq[j];
+
+                for(int k = 0; k < 4; k++)
+                {
+                    fps[k] = {0.283 * (k < 2      ? 1 : - 1),
+                              0.118 * (k % 2 == 0 ? 1 : - 1),
+                              0};
+                    fcs[k] = true;
+                }
+            }
+
+            mpc->SetDesiredTorsoTrajectory(torso_traj);
+            mpc->SetFeetPose(fseq, fcseq);
+        }
+
         for (int j = 0; j < 4; j++)
         {
             message::FootState fs;
@@ -113,25 +161,27 @@ int main(int argc, char** argv)
         fbs.rot = rot;
         fbs.linear_vel = {0, 0, - 0.3};
         fbs.rot_vel.setZero();
-        fbs.rot_vel.x() = angle / 500 * 1000;
+
+        if (i > 100)
+            fbs.rot_vel.x() = angle / 500 * 1000;
 
         wbc->SetTorsoMotionTask(fbs, Eigen::Vector3d::Zero(),
                                 Eigen::Vector3d::Zero());
-        wbc->SetRefFootForces(fake_ref_footforce, fake_foot_contact);
 
         ros::spinOnce();
 
         estimator->Update();
         model->Update();
         controller->Update();
+        mpc->Update();
         wbc->Update();
         hw->PublishCommand(*cmd);
 
         r.sleep();
     }
 
-    conf.kd = 1;
-    conf.kp = 3;
+    conf.kd = 0.1;
+    conf.kp = 0.3;
 
     for (int i = 0; i < 4; i++)
     {
@@ -139,20 +189,16 @@ int main(int argc, char** argv)
         controller->ChangeFootControlMethod(conf);
     }
 
-    int iter = 0;
-    constexpr double len = 0.0;
+    constexpr double len = 0.1;
     constexpr double duration = 400;
     constexpr double t = duration / 1000.;
-
-    // compute desired trajectory
-    control::ModelPredictiveController::TorsoTraj torso_traj(6);
-    control::ModelPredictiveController::FeetPosSeq fseq(6);
-    control::ModelPredictiveController::FeetContactSeq fcseq(6);
 
     Eigen::AngleAxisd rot_base
             = Eigen::AngleAxisd(angle, Eigen::Vector3d::UnitX());
 
-    while(ros::ok())
+    iter = 0;
+
+    while (ros::ok())
     {
         iter++;
 
@@ -168,12 +214,12 @@ int main(int argc, char** argv)
                 message::FloatingBaseState& fbs = torso_traj[i];
                 fbs.trans = {0, 0, 0.25};
                 fbs.rot = rot_base * Eigen::AngleAxisd(
-                            len * sin((iter + i) / duration * 2 * M_PI),
+                            len * sin((iter + i * 20) / duration * 2 * M_PI),
                             Eigen::Vector3d::UnitZ());
                 fbs.linear_vel = {0, 0, 0};
                 fbs.rot_vel.setZero();
                 fbs.rot_vel.z() = len * 2 * M_PI / t
-                        * cos((iter + i) / duration * 2 * M_PI);
+                        * cos((iter + i * 20) / duration * 2 * M_PI);
 
                 std::array<Eigen::Vector3d, 4>& fps = fseq[i];
                 std::array<bool, 4>& fcs = fcseq[i];

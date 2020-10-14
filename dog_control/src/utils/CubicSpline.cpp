@@ -36,6 +36,16 @@ void CubicSpline::Sample(double t, double& x, double& v) const
     v = 3 * a3_ * delta_t_2 + 2 * a2_ * delta_t + a1_;
 }
 
+void CubicSpline::Sample(double t, double &x, double &v, double& a) const
+{
+    double delta_t = t - t0_;
+    double delta_t_2 = delta_t * delta_t;
+
+    x = a3_ * delta_t * delta_t_2 + a2_ * delta_t_2 + a1_ * delta_t + a0_;
+    v = 3 * a3_ * delta_t_2 + 2 * a2_ * delta_t + a1_;
+    a = 6 * a3_ * delta_t + 2 * a2_;
+}
+
 } /* utils */
 
 } /* dog_control */

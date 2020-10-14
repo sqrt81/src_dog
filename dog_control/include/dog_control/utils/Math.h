@@ -7,6 +7,18 @@ namespace dog_control
 namespace utils
 {
 
+namespace
+{
+
+constexpr float singularity = 1e-3;
+
+}
+
+inline bool is_zero(double _x)
+{
+    return (_x < singularity && _x > - singularity);
+}
+
 inline double abs(double _x)
 {
     return (_x < 0) ? (- _x) : _x;
