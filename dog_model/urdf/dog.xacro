@@ -178,7 +178,7 @@
   </link>
   
   <xacro:motor_joint joint="fr_hip_x" parent="fr_base" child="fr_hip"
-    lower="-1.60" upper="1.60">
+    lower="-1.60" upper="2.00">
     <origin xyz="0 0 0" rpy="0 0 0" />
     <axis xyz="-1 0 0" />
   </xacro:motor_joint>
@@ -331,7 +331,7 @@
   </link>
   
   <xacro:motor_joint joint="fl_hip_x" parent="fl_base" child="fl_hip"
-    lower="-1.60" upper="1.60">
+    lower="-1.60" upper="2.00">
     <origin xyz="0 0 0" rpy="0 0 0" />
     <axis xyz="1 0 0" />
   </xacro:motor_joint>
@@ -484,7 +484,7 @@
   </link>
   
   <xacro:motor_joint joint="bl_hip_x" parent="bl_base" child="bl_hip"
-    lower="-1.60" upper="1.60">
+    lower="-1.60" upper="2.00">
     <origin xyz="0 0 0" rpy="0 0 ${PI}" />
     <axis xyz="-1 0 0" />
   </xacro:motor_joint>
@@ -637,7 +637,7 @@
   </link>
   
   <xacro:motor_joint joint="br_hip_x" parent="br_base" child="br_hip"
-    lower="-1.60" upper="1.60">
+    lower="-1.60" upper="2.00">
     <origin xyz="0 0 0" rpy="0 0 ${PI}" />
     <axis xyz="1 0 0" />
   </xacro:motor_joint>

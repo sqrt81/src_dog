@@ -72,7 +72,7 @@
   <xacro:macro name="enableSelfCollide" params="link">
     <gazebo reference="${link}">
       <selfCollide>true</selfCollide>
-      <kp>10000000.0</kp>
+      <kp>1000000.0</kp>
       <kd>100.0</kd>
     </gazebo>
   </xacro:macro>
@@ -107,6 +107,11 @@
   <xacro:enableSelfCollide link="br_thigh" />
   <xacro:enableSelfCollide link="br_shin" />
   <xacro:enableSelfCollide link="br_foot" />
+  
+  <!--<xacro:enableSelfCollide link="fl_foot" />
+  <xacro:enableSelfCollide link="fr_foot" />
+  <xacro:enableSelfCollide link="bl_foot" />
+  <xacro:enableSelfCollide link="br_foot" />-->
   
   <xacro:addTrans joint="fl_hip_x" id="1" />
   <xacro:addTrans joint="fl_hip_y" id="2" />

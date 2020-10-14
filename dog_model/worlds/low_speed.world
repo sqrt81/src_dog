@@ -10,9 +10,9 @@
       <uri>model://ground_plane</uri>
     </include>
     <physics name='default_physics' default='0' type='ode'>
-      <max_step_size>0.001</max_step_size>
+      <max_step_size>0.0001</max_step_size>
       <real_time_factor>0.1</real_time_factor>
-      <real_time_update_rate>100</real_time_update_rate>
+      <real_time_update_rate>1000</real_time_update_rate>
       <ode>
         <solver>
           <type>quick</type>
@@ -21,7 +21,7 @@
         </solver>
         <constraints>
           <cfm>0</cfm>
-          <erp>1</erp>
+          <erp>0.2</erp>
           <contact_max_correcting_vel>0</contact_max_correcting_vel>
           <contact_surface_layer>0</contact_surface_layer>
         </constraints>
