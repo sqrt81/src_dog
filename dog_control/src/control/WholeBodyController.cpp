@@ -1,4 +1,7 @@
 #include "dog_control/control/WholeBodyController.h"
+
+#include "dog_control/physics/DogModel.h"
+#include "dog_control/control/FootPosController.h"
 #include "dog_control/optimization/QuadSolver.h"
 #include "dog_control/physics/EigenToolbox.h"
 #include "dog_control/utils/MiniLog.h"

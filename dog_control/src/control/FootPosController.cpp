@@ -1,6 +1,10 @@
 #include "dog_control/control/FootPosController.h"
+
+#include "dog_control/hardware/HardwareBase.h"
+#include "dog_control/physics/DogModel.h"
 #include "dog_control/utils/Math.h"
 #include "dog_control/utils/MiniLog.h"
+#include "dog_control/utils/Initializer.h"
 
 #include <cassert>
 

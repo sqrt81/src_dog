@@ -1,8 +1,11 @@
-#include "dog_control/control/ModelPredictController.h"
+#include "dog_control/control/ModelPredictiveController.h"
+
+#include "dog_control/control/WholeBodyController.h"
+#include "dog_control/optimization/QuadSolver.h"
+#include "dog_control/physics/EigenToolbox.h"
+#include "dog_control/physics/DogModel.h"
 #include "dog_control/utils/MiniLog.h"
 #include "dog_control/utils/Math.h"
-#include "dog_control/physics/EigenToolbox.h"
-#include "dog_control/optimization/QuadSolver.h"
 
 namespace dog_control
 {

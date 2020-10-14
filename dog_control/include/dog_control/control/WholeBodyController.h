@@ -1,8 +1,10 @@
 #ifndef DOG_CONTROL_CONTROL_WHOLEBODYCONTROLLER_H
 #define DOG_CONTROL_CONTROL_WHOLEBODYCONTROLLER_H
 
-#include "dog_control/physics/DogModel.h"
-#include "dog_control/control/FootPosController.h"
+#include "dog_control/utils/ClassDeclare.h"
+
+#include "dog_control/message/FootState.h"
+#include "dog_control/message/ModelJointState.h"
 #include "dog_control/message/MotorCommand.h"
 #include "dog_control/utils/Initializer.h"
 

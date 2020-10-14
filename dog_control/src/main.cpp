@@ -3,7 +3,7 @@
 #include "dog_control/estimator/CheaterEstimator.h"
 #include "dog_control/control/WholeBodyController.h"
 #include "dog_control/control/FootPosController.h"
-#include "dog_control/control/ModelPredictController.h"
+#include "dog_control/control/ModelPredictiveController.h"
 #include "dog_control/utils/Initializer.h"
 #include "dog_control/utils/Math.h"
 #include "dog_control/utils/MiniLog.h"

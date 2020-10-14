@@ -1,11 +1,11 @@
 #ifndef DOG_CONTROL_CONTROL_FOOTPOSCONTROLLER_H
 #define DOG_CONTROL_CONTROL_FOOTPOSCONTROLLER_H
 
-#include "dog_control/hardware/HardwareBase.h"
-#include "dog_control/physics/DogModel.h"
+#include "dog_control/utils/ParamDict.h"
+
 #include "dog_control/message/FootState.h"
 #include "dog_control/message/MotorCommand.h"
-#include "dog_control/utils/Initializer.h"
+#include "dog_control/utils/ClassDeclare.h"
 
 #include <array>
 #include <boost/weak_ptr.hpp>

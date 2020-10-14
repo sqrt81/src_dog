@@ -1,11 +1,11 @@
 #ifndef DOG_CONTROL_HARDWARE_HARDWAREBASE
 #define DOG_CONTROL_HARDWARE_HARDWAREBASE
 
-#include "dog_control/utils/ParamDict.h"
-
 #include "dog_control/message/Imu.h"
 #include "dog_control/message/JointState.h"
 #include "dog_control/message/MotorCommand.h"
+
+#include "dog_control/utils/ParamDict.h"
 
 namespace dog_control
 {

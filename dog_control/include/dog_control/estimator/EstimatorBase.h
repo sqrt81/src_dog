@@ -1,8 +1,10 @@
 #ifndef DOG_CONTROL_ESTIMATOR_ESTIMATORBASE_H
 #define DOG_CONTROL_ESTIMATOR_ESTIMATORBASE_H
 
-#include "dog_control/hardware/HardwareBase.h"
+#include "dog_control/utils/ClassDeclare.h"
+
 #include "dog_control/message/EstimatorResult.h"
+#include "dog_control/utils/ParamDict.h"
 
 #include <boost/weak_ptr.hpp>
 

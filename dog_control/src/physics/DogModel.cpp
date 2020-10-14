@@ -1,9 +1,10 @@
 #include "dog_control/physics/DogModel.h"
 
+#include "dog_control/estimator/EstimatorBase.h"
+#include "dog_control/hardware/HardwareBase.h"
 #include "dog_control/physics/EigenToolbox.h"
 #include "dog_control/physics/SpatialToolbox.h"
 #include "dog_control/utils/Math.h"
-
 #include "dog_control/utils/MiniLog.h"
 
 namespace dog_control

@@ -1,11 +1,11 @@
 #ifndef DOG_CONTROL_PHYSICS_DOGMODEL_H
 #define DOG_CONTROL_PHYSICS_DOGMODEL_H
 
+#include "dog_control/utils/ClassDeclare.h"
+
 #include "FloatingBaseModel.h"
-#include "dog_control/estimator/EstimatorBase.h"
 #include "dog_control/message/JointState.h"
 #include "dog_control/message/LegName.h"
-#include "dog_control/hardware/HardwareBase.h"
 #include "dog_control/utils/ParamDict.h"
 
 #include <boost/weak_ptr.hpp>

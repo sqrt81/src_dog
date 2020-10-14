@@ -1,10 +1,10 @@
-#ifndef DOG_CONTROL_CONTROL_MODELPREDICTCONTROLLER_H
-#define DOG_CONTROL_CONTROL_MODELPREDICTCONTROLLER_H
+#ifndef DOG_CONTROL_CONTROL_MODELPREDICTIVECONTROLLER_H
+#define DOG_CONTROL_CONTROL_MODELPREDICTIVECONTROLLER_H
 
-#include "dog_control/utils/ParamDict.h"
-#include "dog_control/control/WholeBodyController.h"
-#include "dog_control/physics/DogModel.h"
+#include "dog_control/utils/ClassDeclare.h"
+
 #include "dog_control/message/ModelJointState.h"
+#include "dog_control/utils/ParamDict.h"
 
 #include <Eigen/Eigen>
 #include <array>
@@ -100,4 +100,4 @@ private:
 
 } /* dog_control */
 
-#endif /* DOG_CONTROL_CONTROL_MODELPREDICTCONTROLLER_H */
+#endif /* DOG_CONTROL_CONTROL_MODELPREDICTIVECONTROLLER_H */
