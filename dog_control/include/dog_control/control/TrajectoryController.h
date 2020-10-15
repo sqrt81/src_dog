@@ -37,6 +37,8 @@ public:
     void Update();
 private:
     double dt_;
+    int traj_record_len_;
+
     double traj_beg_time_;
 
     boost::weak_ptr<hardware::ClockBase> clock_ptr_;

@@ -26,6 +26,10 @@ CONTROL = {
     f_z_min = 1,
   },
   
+  TRAJECTORY = {
+    traj_len = 0.5
+  },
+  
   control_period = 0.001,
 }
 

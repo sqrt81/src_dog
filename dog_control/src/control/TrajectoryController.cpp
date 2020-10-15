@@ -2,7 +2,7 @@
 
 #include "dog_control/hardware/ClockBase.h"
 #include "dog_control/utils/CubicSpline.h"
-#include "dog_control/utils/CubicSpline.h"
+#include "dog_control/utils/CubicSplineImpl.hpp"
 #include "dog_control/utils/MiniLog.h"
 #include "dog_control/utils/QueueImpl.hpp"
 
@@ -14,8 +14,16 @@ namespace control
 
 void TrajectoryController::Initialize(utils::ParamDictCRef dict)
 {
-    dt_ = ReadParOrDie(dict, PARAM_WITH_NS(update_period, control/MPC));
+    dt_ = ReadParOrDie(dict, PARAM_WITH_NS(control_period, control));
+    traj_record_len_ = ReadParOrDie(dict, PARAM_WITH_NS(
+            traj_len, control/TRAJECTORY)) / dt_;
     traj_beg_time_ = 0;
+}
+
+void TrajectoryController::ConnectClock(
+        boost::shared_ptr<hardware::ClockBase> clock)
+{
+    clock_ptr_ = clock;
 }
 
 void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
@@ -49,7 +57,18 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
     torso_traj_.EraseTail(torso_traj_.size() - index);
 
     double last_time = traj_beg_time_ + (index - 1) * dt_;
-    message::FloatingBaseState last_state = torso_traj_[index - 1].state;
+    message::FloatingBaseState last_state;
+
+    if (torso_traj_.size())
+        last_state = torso_traj_[index - 1].state;
+    else // first run
+    {
+        last_state = torso_traj[iter].state;
+        last_time = torso_traj[iter].stamp;
+        traj_beg_time_ = last_time;
+        iter++;
+    }
+
     last_state.linear_vel = last_state.rot * last_state.linear_vel;
     last_state.rot_vel = last_state.rot * last_state.rot_vel;
     double sample_time = last_time + dt_;
@@ -61,7 +80,7 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
         next_state.rot_vel = next_state.rot * next_state.rot_vel;
         const double next_time = torso_traj[iter].stamp;
 
-        utils::CubicSpline trans(
+        utils::CubicSpline<Eigen::Vector3d> trans(
                     last_time, last_state.trans, last_state.linear_vel,
                     next_time, next_state.trans, next_state.linear_vel);
 
@@ -72,6 +91,10 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
 
         while(sample_time < next_time)
         {
+            // keep the trajectory length short.
+            if (torso_traj_.size() >= traj_record_len_)
+                return;
+
             const double ratio
                     = (sample_time - last_time) / (next_time - last_time);
 
@@ -106,8 +129,8 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
     }
 }
 
-TrajectoryController::FBState TrajectoryController::GetTorsoPose(
-        double t) const
+TrajectoryController::FBState
+TrajectoryController::GetTorsoPose(double t) const
 {
     const int index = static_cast<int>((t - traj_beg_time_) / dt_);
 
