@@ -12,14 +12,14 @@ template <typename T>
 CubicSpline<T>::CubicSpline(double t1, T x1, T v1,
                          double t2, T x2, T v2)
 {
-    CHECK(t1 != t2);
+    CHECK(t1 != t2) << "[CubicSpline] Invalid mark points.";
 
     t0_ = t1;
     a0_ = x1;
     a1_ = v1;
     double inv_delta_t = 1. / (t2 - t1);
-    double par1 = (x2 - x1) * inv_delta_t - v1;
-    double par2 = v2 - v1;
+    T par1 = (x2 - x1) * inv_delta_t - v1;
+    T par2 = v2 - v1;
     a2_ = (par1 * 3 - par2) * inv_delta_t;
     a3_ = (par1 * inv_delta_t - a2_) * inv_delta_t;
 }

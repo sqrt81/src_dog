@@ -14,9 +14,10 @@ namespace utils
 enum LOG_LEVEL
 {
     INFO = 0,
-    WARN = 1,
-    ERROR = 2,
-    FATAL = 3
+    DEBUG = 1,
+    WARN = 2,
+    ERROR = 3,
+    FATAL = 4
 };
 
 class InfoStream

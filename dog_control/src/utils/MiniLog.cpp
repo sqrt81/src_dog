@@ -20,6 +20,10 @@ InfoStream::~InfoStream()
     case INFO:
         std::cout << "[INFO]    " << ss_.str() << std::endl;
         break;
+    case DEBUG:
+        std::cout << "\033[47;30m[DEBUG]   " << ss_.str()
+                  << "\033[0m" << std::endl;
+        break;
     case WARN:
         std::cout << "\033[33m[WARN]    " << ss_.str()
                   << "\033[0m" << std::endl;

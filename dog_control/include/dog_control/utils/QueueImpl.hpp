@@ -15,7 +15,20 @@ inline void Queue<T>::Push(const T &item)
     while (static_cast<unsigned>(q_sz_ + 1) >= base_.size())
         Expand();
 
-    base_[end_] = item;
+    std::_Construct(M_storage_ + end_, item);
+//    M_storage_[end_] = item;
+    end_ = (end_ + 1) % base_.size();
+    q_sz_++;
+}
+
+template<typename T>
+inline void Queue<T>::Push(T &&item)
+{
+    while (static_cast<unsigned>(q_sz_ + 1) >= base_.size())
+        Expand();
+
+    std::_Construct(M_storage_ + end_, item);
+//    M_storage_[end_] = item;
     end_ = (end_ + 1) % base_.size();
     q_sz_++;
 }
@@ -23,7 +36,7 @@ inline void Queue<T>::Push(const T &item)
 template<typename T>
 inline void Queue<T>::Pop()
 {
-    std::_Destroy(base_.data() + beg_);
+    std::_Destroy(M_storage_ + beg_);
     beg_ = (beg_ + 1) % base_.size();
     q_sz_--;
 }
@@ -33,12 +46,12 @@ inline void Queue<T>::Clear()
 {
     if (beg_ < end_)
     {
-        std::_Destroy(base_.data() + beg_, base_.data() + end_);
+        std::_Destroy(M_storage_ + beg_, M_storage_ + end_);
     }
     else
     {
-        std::_Destroy(base_.data() + beg_, base_.data() + base_.size());
-        std::_Destroy(base_.data(), base_.data() + end_);
+        std::_Destroy(M_storage_ + beg_, M_storage_ + base_.size());
+        std::_Destroy(M_storage_, M_storage_ + end_);
     }
 
     beg_ = 0;
@@ -49,6 +62,9 @@ inline void Queue<T>::Clear()
 template<typename T>
 inline void Queue<T>::EraseTail(int n_erase)
 {
+    if (n_erase < 0)
+        return;
+
     if (n_erase >= q_sz_)
     {
         Clear();
@@ -59,14 +75,14 @@ inline void Queue<T>::EraseTail(int n_erase)
 
     if (end_ >= n_erase)
     {
-        std::_Destroy(base_.data() + end_ - n_erase, base_.data() + end_);
+        std::_Destroy(M_storage_ + end_ - n_erase, M_storage_ + end_);
         end_ -= n_erase;
     }
     else // beg_ > end_ && end_ < n_erase
     {
-        std::_Destroy(base_.data() + base_.size() + end_ - n_erase,
-                      base_.data() + base_.size());
-        std::_Destroy(base_.data(), base_.data() + end_);
+        std::_Destroy(M_storage_ + base_.size() + end_ - n_erase,
+                      M_storage_ + base_.size());
+        std::_Destroy(M_storage_, M_storage_ + end_);
 
         end_ = beg_ + q_sz_;
     }
@@ -75,6 +91,9 @@ inline void Queue<T>::EraseTail(int n_erase)
 template<typename T>
 inline void Queue<T>::EraseHead(int n_erase)
 {
+    if (n_erase < 0)
+        return;
+
     if (n_erase >= q_sz_)
     {
         Clear();
@@ -83,16 +102,16 @@ inline void Queue<T>::EraseHead(int n_erase)
 
     q_sz_ -= n_erase;
 
-    if (base_.size() - beg_ >= n_erase)
+    if (static_cast<signed>(base_.size()) - beg_ >= n_erase)
     {
-        std::_Destroy(base_.data() + beg_, base_.data() + beg_ + n_erase);
+        std::_Destroy(M_storage_ + beg_, M_storage_ + beg_ + n_erase);
         beg_ += n_erase;
     }
     else // beg_ > end_ && base_.size() - beg_ < n_erase
     {
-        std::_Destroy(base_.data() + beg_, base_.data() + base_.size());
-        std::_Destroy(base_.data(),
-                      base_.data() - base_.size() + beg_ + n_erase);
+        std::_Destroy(M_storage_ + beg_, M_storage_ + base_.size());
+        std::_Destroy(M_storage_,
+                      M_storage_ - base_.size() + beg_ + n_erase);
 
         beg_ = end_ - q_sz_;
     }
@@ -107,53 +126,57 @@ inline int Queue<T>::size() const
 template<typename T>
 inline T& Queue<T>::operator[] (int id)
 {
-    return base_[(beg_ + id) % base_.size()];
+    return M_storage_[(beg_ + id) % base_.size()];
 }
 
 template<typename T>
 inline const T& Queue<T>::operator[] (int id) const
 {
-    return base_[(beg_ + id) % base_.size()];
+    return M_storage_[(beg_ + id) % base_.size()];
 }
 
 template<typename T>
 inline T& Queue<T>::Head()
 {
-    return base_[beg_];
+    return M_storage_[beg_];
 }
 
 template<typename T>
 inline const T& Queue<T>::Head() const
 {
-    return base_[beg_];
+    return M_storage_[beg_];
 }
 
 template<typename T>
 inline T& Queue<T>::Tail()
 {
-    return base_[(end_ - 1) & base_.size()];
+    return M_storage_[(end_ - 1) % base_.size()];
 }
 
 template<typename T>
 inline const T& Queue<T>::Tail() const
 {
-    return base_[(end_ - 1) & base_.size()];
+    return M_storage_[(end_ - 1) % base_.size()];
 }
 
 template<typename T>
 inline void Queue<T>::Expand()
 {
-    std::vector<T> temp(base_.size() * 2);
+    std::vector<T_storage> temp(base_.size() * 2);
+    T* const M_new = reinterpret_cast<T*>(temp.data());
 
     for (int i = 0; i < q_sz_; i++)
     {
-        temp[i] = std::move(base_[(beg_ + i) % base_.size()]);
+        std::_Construct(M_new + i,
+                        std::move(M_storage_[(beg_ + i) % base_.size()]));
+//        M_new[i] = std::move(M_storage_[(beg_ + i) % base_.size()]);
     }
 
     beg_ = 0;
     end_ = q_sz_;
 
     base_.swap(temp);
+    M_storage_ = reinterpret_cast<T*>(base_.data());
 }
 
 } /* utils */

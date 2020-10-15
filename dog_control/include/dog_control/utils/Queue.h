@@ -12,12 +12,25 @@ namespace utils
 template<typename T>
 class Queue
 {
+private:
+    union T_storage
+    {
+        T item;
+        char data[sizeof(T)];
+
+        T_storage() {}
+        ~T_storage() {}
+    };
+
 public:
     Queue()
-     : base_(1), beg_(0), end_(0), q_sz_(0)
+     : base_(1), M_storage_(reinterpret_cast<T*>(base_.data())),
+       beg_(0), end_(0), q_sz_(0)
     {}
 
     void Push(const T &item);
+
+    void Push(T&& item);
 
     void Pop();
 
@@ -44,7 +57,9 @@ public:
 private:
     void Expand();
 
-    std::vector<T> base_;
+    std::vector<T_storage> base_;
+    T* M_storage_;
+
     int beg_;
     int end_;
     int q_sz_;
