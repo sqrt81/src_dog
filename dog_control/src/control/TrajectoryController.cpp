@@ -130,7 +130,7 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
 }
 
 TrajectoryController::FBState
-TrajectoryController::GetTorsoPose(double t) const
+TrajectoryController::GetTorsoState(double t) const
 {
     const int index = static_cast<int>((t - traj_beg_time_) / dt_);
 
@@ -141,6 +141,26 @@ TrajectoryController::GetTorsoPose(double t) const
         return torso_traj_.Tail();
 
     return torso_traj_[index];
+}
+
+void TrajectoryController::GetTorsoStates(
+        const std::vector<double> &time_stamp, std::vector<FBState> &poses)
+{
+    poses.clear();
+    poses.reserve(time_stamp.size());
+
+    for (const double t : time_stamp)
+    {
+        if (t < traj_beg_time_)
+            poses.push_back(torso_traj_.Head());
+        else if (t > traj_beg_time_ + dt_ * torso_traj_.size())
+            poses.push_back(torso_traj_.Tail());
+        else
+        {
+            const int index = static_cast<int>((t - traj_beg_time_) / dt_);
+            poses.push_back(torso_traj_[index]);
+        }
+    }
 }
 
 void TrajectoryController::Update()

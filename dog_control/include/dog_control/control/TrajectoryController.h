@@ -32,7 +32,10 @@ public:
 
     void SetTorsoTrajectory(const TorsoTraj &torso_traj);
 
-    FBState GetTorsoPose(double t) const;
+    FBState GetTorsoState(double t) const;
+
+    void GetTorsoStates(const std::vector<double>& time_stamp,
+                       std::vector<FBState>& poses);
 
     void Update();
 private:

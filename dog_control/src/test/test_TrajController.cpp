@@ -43,7 +43,7 @@ int test_TrajController(int argc, char** argv)
     for (int i = 0; i < 20; i++)
     {
         double t = clock->Time() + 0.005 + i * 0.01;
-        auto res = traj_ctrl.GetTorsoPose(t);
+        auto res = traj_ctrl.GetTorsoState(t);
 
         LOG(INFO) << "iter " << i << " time " << t;
         LOG(INFO) << "res: " << res.state.trans.transpose();
