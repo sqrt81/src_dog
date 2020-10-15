@@ -1,5 +1,6 @@
 #include "dog_control/control/ModelPredictiveController.h"
 
+#include "dog_control/control/TrajectoryController.h"
 #include "dog_control/control/WholeBodyController.h"
 #include "dog_control/hardware/ClockBase.h"
 #include "dog_control/optimization/QuadSolver.h"
@@ -94,6 +95,18 @@ void ModelPredictiveController::Initialize(utils::ParamDictCRef dict)
 //    ce0_.resize(0);
 }
 
+void ModelPredictiveController::ConnectClock(
+        boost::shared_ptr<hardware::ClockBase> clock)
+{
+    clock_ptr_ = clock;
+}
+
+void ModelPredictiveController::ConnectTraj(
+        boost::shared_ptr<control::TrajectoryController> traj)
+{
+    traj_ptr_ = traj;
+}
+
 void ModelPredictiveController::ConnectWBC(
         boost::shared_ptr<control::WholeBodyController> WBC)
 {
@@ -141,6 +154,12 @@ void ModelPredictiveController::Update()
     if(interval < update_period_)
         return;
 
+    boost::shared_ptr<TrajectoryController> traj = traj_ptr_.lock();
+    CHECK(traj) << "[MPC] traj controller is not set!";
+
+    traj->SampleTrajFromNow(pred_horizon_ + 1, pred_interval_,
+                            desired_traj_);
+
     CHECK(desired_traj_.size() >= static_cast<unsigned>(pred_horizon_) + 1)
             << "[MPC] torso trajectory length " << desired_traj_.size()
             << " is smaller than prediction horizon " << pred_horizon_
@@ -157,6 +176,7 @@ void ModelPredictiveController::Update()
 
     boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
     CHECK(model) << "[MPC] model is not set!";
+
     cur_state_ = model->TorsoState();
 
     const double t_t_2 = utils::square(pred_interval_) * 0.5;

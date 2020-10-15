@@ -62,7 +62,7 @@ inline void Queue<T>::Clear()
 template<typename T>
 inline void Queue<T>::EraseTail(int n_erase)
 {
-    if (n_erase < 0)
+    if (n_erase <= 0)
         return;
 
     if (n_erase >= q_sz_)
@@ -91,7 +91,7 @@ inline void Queue<T>::EraseTail(int n_erase)
 template<typename T>
 inline void Queue<T>::EraseHead(int n_erase)
 {
-    if (n_erase < 0)
+    if (n_erase <= 0)
         return;
 
     if (n_erase >= q_sz_)

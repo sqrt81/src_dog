@@ -56,11 +56,10 @@ public:
 
     void Initialize(utils::ParamDictCRef dict);
 
-    void ConnectWBC(boost::shared_ptr<control::WholeBodyController> WBC);
-
-    void ConnectModel(boost::shared_ptr<physics::DogModel> model);
-
     void ConnectClock(boost::shared_ptr<hardware::ClockBase> clock);
+    void ConnectTraj(boost::shared_ptr<control::TrajectoryController> traj);
+    void ConnectWBC(boost::shared_ptr<control::WholeBodyController> WBC);
+    void ConnectModel(boost::shared_ptr<physics::DogModel> model);
 
     /**
      * @brief SetDesiredTorsoTrajectory
@@ -105,6 +104,7 @@ private:
     double last_update_time_;       // time stamp of last prediction
     double update_dt_;              // basic control period
 
+    boost::weak_ptr<control::TrajectoryController> traj_ptr_;
     boost::weak_ptr<control::WholeBodyController> WBC_ptr_;
     boost::weak_ptr<hardware::ClockBase> clock_ptr_;
     boost::weak_ptr<physics::DogModel> model_ptr_;

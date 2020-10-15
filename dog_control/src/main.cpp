@@ -28,11 +28,13 @@ int main(int argc, char** argv)
             (new message::MotorCommand());
 
     boost::shared_ptr<physics::DogModel> model(new physics::DogModel());
+    boost::shared_ptr<hardware::ClockBase> clock(
+                new hardware::SimulatedClock());
     boost::shared_ptr<hardware::HardwareBase> hw(
                 new hardware::SimulatedHardware());
     boost::shared_ptr<estimator::EstimatorBase> estimator(
                 new estimator::CheaterEstimator());
-    boost::shared_ptr<control::FootPosController> controller(
+    boost::shared_ptr<control::FootPosController> foot_ctrl(
                 new control::FootPosController());
     boost::shared_ptr<control::WholeBodyController> wbc(
                 new control::WholeBodyController());
@@ -43,30 +45,34 @@ int main(int argc, char** argv)
 
     model->Initialize(dict);
     hw->Initialize(dict);
-    controller->Initialize(dict);
+    foot_ctrl->Initialize(dict);
     wbc->Initialize(dict);
     mpc->Initialize(dict);
     traj->Initialize(dict);
 
-    controller->SetPipelineData(cmd);
+    foot_ctrl->SetPipelineData(cmd);
     wbc->SetPipelineData(cmd);
 
     model->ConnectHardware(hw);
     model->ConnectEstimator(estimator);
     estimator->ConnectHardware(hw);
     estimator->ConnectModel(model);
-    controller->ConnectHardware(hw);
-    controller->ConnectModel(model);
+    foot_ctrl->ConnectHardware(hw);
+    foot_ctrl->ConnectModel(model);
     mpc->ConnectWBC(wbc);
     mpc->ConnectModel(model);
+    mpc->ConnectTraj(traj);
+    mpc->ConnectClock(clock);
     wbc->ConnectModel(model);
+    traj->ConnectClock(clock);
 
     // spin once to update hardware
     ros::spinOnce();
 
+    clock->Update();
     estimator->Update();
     model->Update();
-    controller->Update();
+    foot_ctrl->Update();
 
 //    std::cout << std::endl;
     std::endl(std::cout);
@@ -83,7 +89,7 @@ int main(int argc, char** argv)
     for (int i = 0; i < 4; i++)
     {
         conf.foot_name = static_cast<message::LegName>(i);
-        controller->ChangeFootControlMethod(conf);
+        foot_ctrl->ChangeFootControlMethod(conf);
 
         fake_ref_footforce[i] = {0, 0, 25};
         fake_foot_contact[i] = true;
@@ -93,9 +99,59 @@ int main(int argc, char** argv)
     int iter = 0;
 
     // compute desired trajectory
-    control::ModelPredictiveController::TorsoTraj torso_traj(6);
+//    control::ModelPredictiveController::TorsoTraj torso_traj(6);
     control::ModelPredictiveController::FeetPosSeq fseq(6);
     control::ModelPredictiveController::FeetContactSeq fcseq(6);
+
+    for (int j = 0; j < 6; j++)
+    {
+        std::array<Eigen::Vector3d, 4>& fps = fseq[j];
+        std::array<bool, 4>& fcs = fcseq[j];
+
+        for(int k = 0; k < 4; k++)
+        {
+            fps[k] = {0.283 * (k < 2      ? 1 : - 1),
+                      0.118 * (k % 2 == 0 ? 1 : - 1),
+                      0};
+            fcs[k] = true;
+        }
+    }
+
+    mpc->SetFeetPose(fseq, fcseq);
+
+    {
+        std::vector<message::StampedFloatingBaseState> torso_traj;
+
+        message::StampedFloatingBaseState state;
+        state.stamp = clock->Time();
+        state.state.trans = {0, 0, 0.4};
+        state.state.rot = Eigen::Quaterniond::Identity();
+        state.state.linear_vel = Eigen::Vector3d::Zero();
+        state.state.rot_vel = Eigen::Vector3d::Zero();
+        torso_traj.push_back(state);
+
+        state.stamp = clock->Time() + 0.1;
+        state.state.trans = {0, 0, 0.35};
+        state.state.linear_vel = {0, 0, - 0.5};
+        state.state.rot_vel = {0, 0, 0};
+        torso_traj.push_back(state);
+
+        state.stamp = clock->Time() + 0.3;
+        state.state.trans = {0, 0, 0.3};
+        state.state.rot = Eigen::AngleAxisd(M_PI_4, Eigen::Vector3d::UnitX());
+        state.state.linear_vel = {0, - 0.5 * sin(M_PI_4), - 0.5 * cos(M_PI_4)};
+        state.state.rot_vel = {M_PI_4 / 0.4, 0, 0};
+        torso_traj.push_back(state);
+
+        state.stamp = clock->Time() + 0.5;
+        state.state.trans = {0, 0, 0.25};
+        state.state.rot = Eigen::AngleAxisd(M_PI_2, Eigen::Vector3d::UnitX());
+        state.state.linear_vel = Eigen::Vector3d::Zero();
+        state.state.rot_vel = {0, 0, 0};
+        torso_traj.push_back(state);
+
+        traj->SetTorsoTrajectory(torso_traj);
+    }
 
     // temp standup function
     for (int i = 0; i < 500; i++)
@@ -106,42 +162,6 @@ int main(int argc, char** argv)
         Eigen::AngleAxisd rot((i < 100 ? 0 :  i - 100) * angle / 400,
                               Eigen::Vector3d::UnitX());
 
-        if (iter % 10 == 1) // make sure mpc is inited in the first round
-        {
-            for (int j = 0; j < 6; j++)
-            {
-                int i2 = j * 20 + i;
-                if (i2 > 500)
-                    i2 = 500;
-
-                message::FloatingBaseState& fbs = torso_traj[j];
-                fbs.trans = {0, 0, 0.4 - i2 * 0.15 / 500};
-
-                i2 -= 100;
-                if (i2 < 0)
-                    i2 = 0;
-
-                fbs.rot = Eigen::AngleAxisd(i2 * angle / 400,
-                                            Eigen::Vector3d::UnitX());
-                fbs.linear_vel = {0, 0, 0};
-                fbs.rot_vel.setZero();
-
-                std::array<Eigen::Vector3d, 4>& fps = fseq[j];
-                std::array<bool, 4>& fcs = fcseq[j];
-
-                for(int k = 0; k < 4; k++)
-                {
-                    fps[k] = {0.283 * (k < 2      ? 1 : - 1),
-                              0.118 * (k % 2 == 0 ? 1 : - 1),
-                              0};
-                    fcs[k] = true;
-                }
-            }
-
-            mpc->SetDesiredTorsoTrajectory(torso_traj);
-            mpc->SetFeetPose(fseq, fcseq);
-        }
-
         for (int j = 0; j < 4; j++)
         {
             message::FootState fs;
@@ -151,7 +171,7 @@ int main(int argc, char** argv)
                       - 0.4 + i * 0.15 / 500};
             fs.pos = rot.inverse() * fs.pos;
             fs.vel = {0, 0, 0.3};
-            controller->SetFootStateCmd(fs);
+            foot_ctrl->SetFootStateCmd(fs);
 
             fs.pos = {0.283 * (j < 2      ? 1 : - 1),
                       0.118 * (j % 2 == 0 ? 1 : - 1),
@@ -174,27 +194,20 @@ int main(int argc, char** argv)
 
         ros::spinOnce();
 
+        clock->Update();
         estimator->Update();
         model->Update();
-        controller->Update();
+        foot_ctrl->Update();
         mpc->Update();
         wbc->Update();
+        traj->Update();
         hw->PublishCommand(*cmd);
 
         r.sleep();
     }
 
-    conf.kd = 0.1;
-    conf.kp = 0.3;
-
-    for (int i = 0; i < 4; i++)
-    {
-        conf.foot_name = static_cast<message::LegName>(i);
-        controller->ChangeFootControlMethod(conf);
-    }
-
     constexpr double len = 0.1;
-    constexpr double duration = 400;
+    constexpr int duration = 400;
     constexpr double t = duration / 1000.;
 
     Eigen::AngleAxisd rot_base
@@ -206,40 +219,35 @@ int main(int argc, char** argv)
     {
         iter++;
 
-        Eigen::AngleAxisd rot = rot_base;
-        rot = rot * Eigen::AngleAxisd(
-                    len * sin(iter / duration * 2 * M_PI),
-                    Eigen::Vector3d::UnitZ());
-
-        if(iter % 10 == 1) // make sure mpc is inited in the first round
+        if (iter % duration == 1)
         {
-            for(int i = 0; i < 6; i++)
+            std::vector<message::StampedFloatingBaseState> torso_traj;
+            const double sample_time = clock->Time();
+
+            for (int i = 0; i < 200; i++)
             {
-                message::FloatingBaseState& fbs = torso_traj[i];
-                fbs.trans = {0, 0, 0.25};
-                fbs.rot = rot_base * Eigen::AngleAxisd(
-                            len * sin((iter + i * 20) / duration * 2 * M_PI),
+                message::StampedFloatingBaseState state;
+                const int offset = i * duration / 200;
+                state.stamp = sample_time + offset * 0.001;
+                state.state.trans = {0, 0, 0.25};
+                state.state.rot = rot_base;
+                state.state.rot = state.state.rot * Eigen::AngleAxisd(
+                            len * sin(offset * 2 * M_PI / duration),
                             Eigen::Vector3d::UnitZ());
-                fbs.linear_vel = {0, 0, 0};
-                fbs.rot_vel.setZero();
-                fbs.rot_vel.z() = len * 2 * M_PI / t
-                        * cos((iter + i * 20) / duration * 2 * M_PI);
-
-                std::array<Eigen::Vector3d, 4>& fps = fseq[i];
-                std::array<bool, 4>& fcs = fcseq[i];
-
-                for(int j = 0; j < 4; j++)
-                {
-                    fps[j] = {0.283 * (j < 2      ? 1 : - 1),
-                              0.118 * (j % 2 == 0 ? 1 : - 1),
-                              0};
-                    fcs[j] = true;
-                }
+                state.state.linear_vel = Eigen::Vector3d::Zero();
+                state.state.rot_vel = Eigen::Vector3d::Zero();
+                state.state.rot_vel.z() = len * 2 * M_PI / t
+                        * cos(offset * 2 * M_PI / duration);
+                torso_traj.push_back(state);
             }
 
-            mpc->SetDesiredTorsoTrajectory(torso_traj);
-            mpc->SetFeetPose(fseq, fcseq);
+            traj->SetTorsoTrajectory(torso_traj);
         }
+
+        Eigen::AngleAxisd rot = rot_base;
+        rot = rot * Eigen::AngleAxisd(
+                    len * sin(iter * 2 * M_PI / duration),
+                    Eigen::Vector3d::UnitZ());
 
         message::FloatingBaseState fbs;
         fbs.trans = {0, 0, 0.25};
@@ -247,7 +255,7 @@ int main(int argc, char** argv)
         fbs.linear_vel = {0, 0, 0};
         fbs.rot_vel.setZero();
         fbs.rot_vel.z() = len * 2 * M_PI / t
-                * cos(iter / duration * 2 * M_PI);
+                * cos(iter * 2 * M_PI / duration);
 
         for (int i = 0; i < 4; i++)
         {
@@ -259,7 +267,7 @@ int main(int argc, char** argv)
             fs.vel = - fbs.rot_vel.cross(fs.pos); // global
             fs.vel = rot.inverse() * fs.vel; // local
             fs.pos = rot.inverse() * fs.pos;
-            controller->SetFootStateCmd(fs);
+            foot_ctrl->SetFootStateCmd(fs);
 
             fs.pos = {0.283 * (i < 2      ? 1 : - 1),
                       0.118 * (i % 2 == 0 ? 1 : - 1),
@@ -271,7 +279,7 @@ int main(int argc, char** argv)
 
         Eigen::Vector3d torso_acc = {0, 0,
                                      - len * utils::square(2 * M_PI / t)
-                                      * sin(iter / duration * 2 * M_PI)};
+                                      * sin(iter * 2 * M_PI / duration)};
 
         wbc->SetTorsoMotionTask(fbs, Eigen::Vector3d::Zero(),
                                 rot * torso_acc);
@@ -279,11 +287,13 @@ int main(int argc, char** argv)
 
         ros::spinOnce();
 
+        clock->Update();
         estimator->Update();
         model->Update();
-        controller->Update();
+        foot_ctrl->Update();
         mpc->Update();
         wbc->Update();
+        traj->Update();
         hw->PublishCommand(*cmd);
 
         r.sleep();

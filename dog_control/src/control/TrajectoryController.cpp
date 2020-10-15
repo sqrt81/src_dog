@@ -51,8 +51,10 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
 
     // Find the index of the first element in torso_traj_
     // to be replaced.
-    const int index = static_cast<int>(
-                (torso_traj[iter].stamp - traj_beg_time_) / dt_) + 1;
+    const int index
+            = std::max(static_cast<int>((torso_traj[iter].stamp
+                                         - traj_beg_time_) / dt_) + 1,
+                       torso_traj_.size());
 
     torso_traj_.EraseTail(torso_traj_.size() - index);
 
@@ -132,33 +134,59 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
 TrajectoryController::FBState
 TrajectoryController::GetTorsoState(double t) const
 {
-    const int index = static_cast<int>((t - traj_beg_time_) / dt_);
-
-    if (index < 0)
+    if (t < traj_beg_time_)
         return torso_traj_.Head();
 
-    if (index >= torso_traj_.size())
-        return torso_traj_.Tail();
+    if (t > traj_beg_time_ + dt_ * torso_traj_.size())
+        return  torso_traj_.Tail();
 
+    const int index = static_cast<int>((t - traj_beg_time_) / dt_);
     return torso_traj_[index];
 }
 
-void TrajectoryController::GetTorsoStates(
-        const std::vector<double> &time_stamp, std::vector<FBState> &poses)
+void TrajectoryController::GetTorsoTraj(
+        const std::vector<double> &time_stamp,
+        std::vector<FBState> &traj) const
 {
-    poses.clear();
-    poses.reserve(time_stamp.size());
+    traj.clear();
+    traj.reserve(time_stamp.size());
 
     for (const double t : time_stamp)
     {
         if (t < traj_beg_time_)
-            poses.push_back(torso_traj_.Head());
+            traj.push_back(torso_traj_.Head());
         else if (t > traj_beg_time_ + dt_ * torso_traj_.size())
-            poses.push_back(torso_traj_.Tail());
+            traj.push_back(torso_traj_.Tail());
         else
         {
             const int index = static_cast<int>((t - traj_beg_time_) / dt_);
-            poses.push_back(torso_traj_[index]);
+            traj.push_back(torso_traj_[index]);
+        }
+    }
+}
+
+void TrajectoryController::SampleTrajFromNow(int sample_cnt, double interval,
+                                             std::vector<MPCState> &traj) const
+{
+    boost::shared_ptr<hardware::ClockBase> clock = clock_ptr_.lock();
+    CHECK(clock) << "[TrajController] clock is not set!";
+
+    const double cur_time = clock->Time();
+    traj.clear();
+    traj.reserve(sample_cnt);
+
+    for (int i = 0; i < sample_cnt; i++)
+    {
+        const double t = cur_time + i * interval;
+
+        if (t < traj_beg_time_)
+            traj.push_back(torso_traj_.Head().state);
+        else if (t > traj_beg_time_ + dt_ * torso_traj_.size())
+            traj.push_back(torso_traj_.Tail().state);
+        else
+        {
+            const int index = static_cast<int>((t - traj_beg_time_) / dt_);
+            traj.push_back(torso_traj_[index].state);
         }
     }
 }

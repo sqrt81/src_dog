@@ -18,6 +18,7 @@ namespace control
 class TrajectoryController
 {
 protected:
+    using MPCState = message::FloatingBaseState;
     using FBState = message::FloatingBaseStateWithAcc;
     using StampedFBS = message::StampedFloatingBaseState;
 
@@ -34,8 +35,11 @@ public:
 
     FBState GetTorsoState(double t) const;
 
-    void GetTorsoStates(const std::vector<double>& time_stamp,
-                       std::vector<FBState>& poses);
+    void GetTorsoTraj(const std::vector<double>& time_stamp,
+                      std::vector<FBState>& traj) const;
+
+    void SampleTrajFromNow(int sample_cnt, double interval,
+                           std::vector<MPCState>& traj) const;
 
     void Update();
 private:
