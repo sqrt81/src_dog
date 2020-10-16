@@ -16,6 +16,14 @@ namespace dog_control
 namespace control
 {
 
+/**
+ * @brief The FootPosController class
+ * The foot position controller is used to "interpret"
+ * from foot state to leg joints' state.
+ * Which means, for upper level controllers,
+ * e.g., MPC and TrajController, they only need to
+ * care about foot movement.
+ */
 class FootPosController
 {
 protected:
@@ -35,6 +43,10 @@ public:
 
     void SetPipelineData(boost::shared_ptr<message::MotorCommand> cmd);
 
+    /**
+     * @brief ChangeFootControlMethod
+     * Change configuration of joint kp, kd and IK.
+     */
     void ChangeFootControlMethod(LegConfigCRef config);
 
     void SetFootStateCmd(FootStateCRef foot_state);
