@@ -1,5 +1,7 @@
 #include "dog_control/control/WholeBodyController.h"
 
+#include "dog_control/control/ModelPredictiveController.h"
+#include "dog_control/hardware/ClockBase.h"
 #include "dog_control/physics/DogModel.h"
 #include "dog_control/control/FootPosController.h"
 #include "dog_control/optimization/QuadSolver.h"
@@ -109,10 +111,22 @@ void WholeBodyController::Initialize(utils::ParamDictCRef dict)
     }
 }
 
+void WholeBodyController::ConnectClock(
+        boost::shared_ptr<hardware::ClockBase> clock)
+{
+    clock_ptr_ = clock;
+}
+
 void WholeBodyController::ConnectModel(
         boost::shared_ptr<physics::DogModel> model)
 {
     model_ptr_ = model;
+}
+
+void WholeBodyController::ConnectMPC(
+        boost::shared_ptr<control::ModelPredictiveController> mpc)
+{
+    mpc_ptr_ = mpc;
 }
 
 void WholeBodyController::SetPipelineData(
@@ -150,8 +164,17 @@ void WholeBodyController::SetRefFootForces(
 
 void WholeBodyController::Update()
 {
+    boost::shared_ptr<control::ModelPredictiveController> mpc
+            = mpc_ptr_.lock();
+    CHECK(mpc) << "[WBC] MPC is not set!";
+
+    boost::shared_ptr<hardware::ClockBase> clock = clock_ptr_.lock();
+    CHECK(clock) << "[WBC] clock is not set!";
+
+    mpc->GetFeetForce(clock->Time(), ref_force_, foot_contact_);
+
     boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
-    assert(model);
+    CHECK(model) << "[WBC] Model is not set!";
 
     message::FloatingBaseState torso_state = model->TorsoState();
     mass_ = model->MassMatrix();

@@ -17,7 +17,7 @@ void TrajectoryController::Initialize(utils::ParamDictCRef dict)
     dt_ = ReadParOrDie(dict, PARAM_WITH_NS(control_period, control));
     traj_record_len_ = ReadParOrDie(dict, PARAM_WITH_NS(
             traj_len, control/TRAJECTORY)) / dt_;
-    traj_beg_time_ = 0;
+    traj_beg_time_ = - 1.;
 }
 
 void TrajectoryController::ConnectClock(
@@ -91,7 +91,7 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
                 = (next_state.rot_vel - last_state.rot_vel)
                 / (next_time - last_time);
 
-        while(sample_time < next_time)
+        while (sample_time < next_time)
         {
             // keep the trajectory length short.
             if (torso_traj_.size() >= traj_record_len_)
@@ -128,6 +128,9 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
 
             sample_time += dt_;
         }
+
+        last_time = next_time;
+        last_state = next_state;
     }
 }
 
@@ -172,6 +175,7 @@ void TrajectoryController::SampleTrajFromNow(int sample_cnt, double interval,
     CHECK(clock) << "[TrajController] clock is not set!";
 
     const double cur_time = clock->Time();
+
     traj.clear();
     traj.reserve(sample_cnt);
 
@@ -193,6 +197,10 @@ void TrajectoryController::SampleTrajFromNow(int sample_cnt, double interval,
 
 void TrajectoryController::Update()
 {
+    // don't update if not initialized.
+    if (torso_traj_.size() == 0)
+        return;
+
     boost::shared_ptr<hardware::ClockBase> clock = clock_ptr_.lock();
     CHECK(clock) << "[TrajController] clock is not set!";
 

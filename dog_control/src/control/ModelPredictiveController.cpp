@@ -1,7 +1,6 @@
 #include "dog_control/control/ModelPredictiveController.h"
 
 #include "dog_control/control/TrajectoryController.h"
-#include "dog_control/control/WholeBodyController.h"
 #include "dog_control/hardware/ClockBase.h"
 #include "dog_control/optimization/QuadSolver.h"
 #include "dog_control/physics/EigenToolbox.h"
@@ -71,7 +70,7 @@ void ModelPredictiveController::Initialize(utils::ParamDictCRef dict)
         state_weight_.segment<n_s>(i * n_s) = state_weight_.head<n_s>();
 
     update_dt_ = ReadParOrDie(dict, PARAM_WITH_NS(control_period, control));
-    last_update_time_ = 0.;
+    last_update_time_ = - 1.;
 
     A_.resize(pred_horizon_, Eigen::MatrixXd::Zero(n_s, n_s));
     B_.resize(pred_horizon_, Eigen::MatrixXd::Zero(n_s, n_f));
@@ -107,12 +106,6 @@ void ModelPredictiveController::ConnectTraj(
     traj_ptr_ = traj;
 }
 
-void ModelPredictiveController::ConnectWBC(
-        boost::shared_ptr<control::WholeBodyController> WBC)
-{
-    WBC_ptr_ = WBC;
-}
-
 void ModelPredictiveController::ConnectModel(
         boost::shared_ptr<physics::DogModel> model)
 {
@@ -134,22 +127,28 @@ void ModelPredictiveController::SetFeetPose(
         const FeetPosSeq &feet_pos, const FeetContactSeq &feet_contact)
 {
     feet_pos_seq_ = feet_pos;
-    feet_contact_seq_ = feet_contact;
+    contact_seq_ = feet_contact;
+}
+
+void ModelPredictiveController::GetFeetForce(
+        double t,
+        std::array<Eigen::Vector3d, 4> &force,
+        std::array<bool, 4> &contact) const
+{
+    const double interval = std::max(t - last_update_time_, 0.);
+    const int cur_index = std::min(static_cast<int>(interval / pred_interval_),
+                                   static_cast<int>(pred_horizon_) - 1);
+
+    force = foot_force_[cur_index];
+    contact = contact_seq_[cur_index];
 }
 
 void ModelPredictiveController::Update()
 {
-    boost::shared_ptr<WholeBodyController> wbc = WBC_ptr_.lock();
-    CHECK(wbc) << "[MPC] wbc is not set!";
-
     boost::shared_ptr<hardware::ClockBase> clock = clock_ptr_.lock();
     CHECK(clock) << "[MPC] clock is not set!";
 
     const double interval = clock->Time() - last_update_time_;
-
-    const int cur_index = static_cast<int>(interval / pred_interval_);
-    wbc->SetRefFootForces(foot_force_[cur_index],
-                          feet_contact_seq_[cur_index]);
 
     if(interval < update_period_)
         return;
@@ -169,9 +168,9 @@ void ModelPredictiveController::Update()
             << "[MPC] feet pos sequence length " << feet_pos_seq_.size()
             << " is smaller than prediction horizon " << pred_horizon_;
 
-    CHECK(feet_contact_seq_.size() >= static_cast<unsigned>(pred_horizon_))
+    CHECK(contact_seq_.size() >= static_cast<unsigned>(pred_horizon_))
             << "[MPC] feet contact sequence length "
-            << feet_contact_seq_.size()
+            << contact_seq_.size()
             << " is smaller than prediction horizon " << pred_horizon_;
 
     boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
@@ -226,7 +225,7 @@ void ModelPredictiveController::Update()
         // Build B_[i].
         for (int j = 0; j < 4; j++)
         {
-            if (!feet_contact_seq_[i][j])
+            if (!contact_seq_[i][j])
             {
                 Bi.middleCols<3>(j * 3).setZero();
                 continue;
@@ -302,8 +301,8 @@ void ModelPredictiveController::Update()
         }
     }
 
-//    LOG(INFO) << "X0     " << Aqp_C_X0_.tail<n_s>().transpose();
-//    LOG(INFO) << "X_real " << Ai_x_cur.transpose();
+//    LOG(DEBUG) << "X0     " << Aqp_C_X0_.tail<n_s>().transpose();
+//    LOG(DEBUG) << "X_real " << Ai_x_cur.transpose();
 
     G_ = Aqp_Bqp_.transpose() * state_weight_.asDiagonal() * Aqp_Bqp_;
     G_.diagonal().array() += force_weight_;
@@ -323,7 +322,7 @@ void ModelPredictiveController::Update()
     {
         for (int j = 0; j < 4; j++)
         {
-            if (feet_contact_seq_[i][j])
+            if (contact_seq_[i][j])
             {
                 // first type of inequality constraint is z force constraint
                 CI_(i * n_f + j * 3 + 2, col_offset    ) =   1.;
@@ -372,13 +371,21 @@ void ModelPredictiveController::Update()
         force_i[3] = pred_force_.segment<3>(i * n_f + 9);
     }
 
-//    LOG(INFO) << "A0" << std::endl << A_[0];
-//    LOG(INFO) << "B0" << std::endl << B_[0];
+//    LOG(DEBUG) << "A0" << std::endl << A_[0];
+//    LOG(DEBUG) << "B0" << std::endl << B_[0];
 
-//    LOG(INFO) << "fl: " << foot_force_[0][0].transpose();
-//    LOG(INFO) << "fr: " << foot_force_[0][1].transpose();
-//    LOG(INFO) << "bl: " << foot_force_[0][2].transpose();
-//    LOG(INFO) << "br: " << foot_force_[0][3].transpose() << std::endl;
+//    LOG(DEBUG) << "fl: " << foot_force_[0][0].transpose();
+//    LOG(DEBUG) << "fr: " << foot_force_[0][1].transpose();
+//    LOG(DEBUG) << "bl: " << foot_force_[0][2].transpose();
+//    LOG(DEBUG) << "br: " << foot_force_[0][3].transpose() << std::endl;
+
+//    LOG(DEBUG) << "fl pos: " << feet_pos_seq_[0][0].transpose();
+//    LOG(DEBUG) << "fr pos: " << feet_pos_seq_[0][1].transpose();
+//    LOG(DEBUG) << "bl pos: " << feet_pos_seq_[0][2].transpose();
+//    LOG(DEBUG) << "br pos: " << feet_pos_seq_[0][3].transpose();
+//    LOG(DEBUG) << "real:   " << cur_state_.rot.coeffs().transpose();
+//    LOG(DEBUG) << "torso:  " << desired_traj_[0].rot.coeffs().transpose()
+//               << std::endl;
 
     last_update_time_ = clock->Time();
 }

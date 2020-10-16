@@ -16,7 +16,7 @@ using std::atan2;
         assert(iter != dict.end()); \
         param ## _ = iter->second; \
     } \
-    while(false)
+    while (false)
 
 
 namespace dog_control

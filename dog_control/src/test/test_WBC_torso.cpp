@@ -138,7 +138,7 @@ int test_WBC_torso(int argc, char** argv)
     constexpr double duration = 400;
     constexpr double t = duration / 1000.;
 
-    while(ros::ok())
+    while (ros::ok())
     {
         iter++;
 

@@ -27,6 +27,8 @@ int test_MPC_ori(int argc, char** argv)
             (new message::MotorCommand());
 
     boost::shared_ptr<physics::DogModel> model(new physics::DogModel());
+    boost::shared_ptr<hardware::ClockBase> clock(
+                new hardware::SimulatedClock());
     boost::shared_ptr<hardware::HardwareBase> hw(
                 new hardware::SimulatedHardware());
     boost::shared_ptr<estimator::EstimatorBase> estimator(
@@ -53,9 +55,11 @@ int test_MPC_ori(int argc, char** argv)
     estimator->ConnectModel(model);
     controller->ConnectHardware(hw);
     controller->ConnectModel(model);
-    mpc->ConnectWBC(wbc);
     mpc->ConnectModel(model);
+    mpc->ConnectClock(clock);
+    wbc->ConnectMPC(mpc);
     wbc->ConnectModel(model);
+    wbc->ConnectClock(clock);
 
     // spin once to update hardware
     ros::spinOnce();

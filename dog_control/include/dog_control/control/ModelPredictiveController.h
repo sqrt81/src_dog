@@ -58,7 +58,6 @@ public:
 
     void ConnectClock(boost::shared_ptr<hardware::ClockBase> clock);
     void ConnectTraj(boost::shared_ptr<control::TrajectoryController> traj);
-    void ConnectWBC(boost::shared_ptr<control::WholeBodyController> WBC);
     void ConnectModel(boost::shared_ptr<physics::DogModel> model);
 
     /**
@@ -75,8 +74,12 @@ public:
      */
     void SetCurTorsoPose(FBSCRef cur_state);
 
-    void SetFeetPose(const FeetPosSeq& feet_pos,
-                     const FeetContactSeq& feet_contact);
+    void SetFeetPose(const FeetPosSeq &feet_pos,
+                     const FeetContactSeq &feet_contact);
+
+    void GetFeetForce(double t,
+                      std::array<Eigen::Vector3d, 4> &force,
+                      std::array<bool, 4> &contact) const;
 
     void Update();
 
@@ -105,14 +108,13 @@ private:
     double update_dt_;              // basic control period
 
     boost::weak_ptr<control::TrajectoryController> traj_ptr_;
-    boost::weak_ptr<control::WholeBodyController> WBC_ptr_;
     boost::weak_ptr<hardware::ClockBase> clock_ptr_;
     boost::weak_ptr<physics::DogModel> model_ptr_;
 
     FBState cur_state_;
     TorsoTraj desired_traj_;
     FeetPosSeq feet_pos_seq_;
-    FeetContactSeq feet_contact_seq_;
+    FeetContactSeq contact_seq_;
 
     // system matrixs
     std::vector<Eigen::MatrixXd> A_;

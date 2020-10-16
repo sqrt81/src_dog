@@ -80,7 +80,7 @@ int testFootPosController(int argc, char** argv)
         ros::Duration(0.001).sleep();
     }
 
-    while(ros::ok())
+    while (ros::ok())
     {
         for (int i = 0; i < 4; i++)
         {

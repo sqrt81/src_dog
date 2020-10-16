@@ -75,7 +75,7 @@ void LuaReader::ReadWithNamespace(ParamDict &params, const std::string &ns) cons
     int t_idx = lua_gettop(l_state);
     lua_pushnil(l_state);
 
-    while(lua_next(l_state, t_idx))
+    while (lua_next(l_state, t_idx))
     {
         // index -2 --> key
         // index -1 --> value

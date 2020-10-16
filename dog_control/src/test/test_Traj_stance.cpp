@@ -59,20 +59,25 @@ int test_Traj_stance(int argc, char** argv)
     estimator->ConnectModel(model);
     foot_ctrl->ConnectHardware(hw);
     foot_ctrl->ConnectModel(model);
-    mpc->ConnectWBC(wbc);
     mpc->ConnectModel(model);
     mpc->ConnectTraj(traj);
     mpc->ConnectClock(clock);
+    wbc->ConnectMPC(mpc);
     wbc->ConnectModel(model);
+    wbc->ConnectClock(clock);
     traj->ConnectClock(clock);
 
     // spin once to update hardware
     ros::spinOnce();
 
+    // wait for time message
+    ros::Duration(0.01).sleep();
+
     clock->Update();
     estimator->Update();
     model->Update();
     foot_ctrl->Update();
+    traj->Update();
 
 //    std::cout << std::endl;
     std::endl(std::cout);
@@ -82,17 +87,11 @@ int test_Traj_stance(int argc, char** argv)
     conf.knee_outwards = true;
     conf.kd = 0.1;
     conf.kp = 0.3;
-    std::array<Eigen::Vector3d, 4> fake_ref_footforce;
-    std::array<bool, 4> fake_foot_contact;
-    ros::Rate r(1. / dt);
 
     for (int i = 0; i < 4; i++)
     {
         conf.foot_name = static_cast<message::LegName>(i);
         foot_ctrl->ChangeFootControlMethod(conf);
-
-        fake_ref_footforce[i] = {0, 0, 25};
-        fake_foot_contact[i] = true;
     }
 
     const double angle = M_PI_2;
@@ -153,6 +152,8 @@ int test_Traj_stance(int argc, char** argv)
         traj->SetTorsoTrajectory(torso_traj);
     }
 
+    ros::Rate r(1. / dt);
+
     // temp standup function
     for (int i = 0; i < 500; i++)
     {
@@ -195,12 +196,12 @@ int test_Traj_stance(int argc, char** argv)
         ros::spinOnce();
 
         clock->Update();
+        traj->Update();
         estimator->Update();
         model->Update();
         foot_ctrl->Update();
         mpc->Update();
         wbc->Update();
-        traj->Update();
         hw->PublishCommand(*cmd);
 
         r.sleep();
@@ -283,17 +284,16 @@ int test_Traj_stance(int argc, char** argv)
 
         wbc->SetTorsoMotionTask(fbs, Eigen::Vector3d::Zero(),
                                 rot * torso_acc);
-//        wbc->SetRefFootForces(fake_ref_footforce, fake_foot_contact);
 
         ros::spinOnce();
 
         clock->Update();
+        traj->Update();
         estimator->Update();
         model->Update();
         foot_ctrl->Update();
         mpc->Update();
         wbc->Update();
-        traj->Update();
         hw->PublishCommand(*cmd);
 
         r.sleep();
