@@ -18,7 +18,7 @@ template <typename T>
 class CubicSpline
 {
 public:
-    CubicSpline() = delete;
+    CubicSpline() = default;
 
     CubicSpline(double t1, T x1, T v1,
                 double t2, T x2, T v2);
