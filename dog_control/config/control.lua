@@ -2,8 +2,8 @@ CONTROL = {
   WBC = {
     kp_body_Cartesian = 100,
     kd_body_Cartesian = 10,
-    kp_body_rotation = 200,
-    kd_body_rotation = 20,
+    kp_body_rotation = 1000,
+    kd_body_rotation = 100,
     kp_foot_Cartesian = 100,
     kd_foot_Cartesian = 10,
     

@@ -1,6 +1,7 @@
 #include "dog_control/control/WholeBodyController.h"
 
 #include "dog_control/control/ModelPredictiveController.h"
+#include "dog_control/control/TrajectoryController.h"
 #include "dog_control/hardware/ClockBase.h"
 #include "dog_control/physics/DogModel.h"
 #include "dog_control/control/FootPosController.h"
@@ -129,6 +130,12 @@ void WholeBodyController::ConnectMPC(
     mpc_ptr_ = mpc;
 }
 
+void WholeBodyController::ConnectTraj(
+        boost::shared_ptr<control::TrajectoryController> traj)
+{
+    traj_ptr_ = traj;
+}
+
 void WholeBodyController::SetPipelineData(
         boost::shared_ptr<message::MotorCommand> cmd)
 {
@@ -140,9 +147,9 @@ void WholeBodyController::SetTorsoMotionTask(
         const Eigen::Vector3d &a_lin_desired,
         const Eigen::Vector3d &a_rot_desired)
 {
-    torso_state_task_ = state_desired;
-    torso_acc_linear_task_ = a_lin_desired;
-    torso_acc_rot_task_ = a_rot_desired;
+    torso_task_.state = state_desired;
+    torso_task_.linear_acc = a_lin_desired;
+    torso_task_.rot_acc = a_rot_desired;
 }
 
 void WholeBodyController::SetFootMotionTask(FootStateCRef state_desired,
@@ -173,6 +180,10 @@ void WholeBodyController::Update()
 
     mpc->GetFeetForce(clock->Time(), ref_force_, foot_contact_);
 
+    boost::shared_ptr<control::TrajectoryController> traj = traj_ptr_.lock();
+    CHECK(traj) << "[WBC] traj is not set!";
+    torso_task_ = traj->GetTorsoState(clock->Time());
+
     boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
     CHECK(model) << "[WBC] Model is not set!";
 
@@ -190,19 +201,15 @@ void WholeBodyController::Update()
 
     // The first is body rotational acceleration task.
     Eigen::Quaterniond rot_pos_err
-            = torso_state.rot.conjugate() * torso_state_task_.rot;
+            = torso_state.rot.conjugate() * torso_task_.state.rot;
 
     if (rot_pos_err.w() < 0)
         rot_pos_err.coeffs() *= -1;
 
-    // Different from linear acceleration task,
-    // rotational acceleration task is computed in torso frame.
-    // As a result, velocity difference should be transformed
-    // into local frame, while jacobian is simpliy identidy.
-    a_cmd = torso_state.rot.conjugate() * torso_acc_rot_task_
+    a_cmd = torso_state.rot.conjugate() * torso_task_.rot_acc
             + kp_body_rotation_ * physics::QuatToSO3(rot_pos_err)
             + kd_body_rotation_
-              * (rot_pos_err * torso_state_task_.rot_vel
+              * (rot_pos_err * torso_task_.state.rot_vel
                  - torso_state.rot_vel);
 
     jacobian_.setZero();
@@ -214,11 +221,15 @@ void WholeBodyController::Update()
     Eigen::VectorXd aq = DCInv(jacobian_, inv_m_, invertable) * a_cmd;
 
     // The second task is body linear acceleration task.
-    a_cmd = torso_acc_linear_task_
+    // Different from rotational acceleration task,
+    // linear acceleration task is computed in global frame.
+    // As a result, velocity difference should be transformed
+    // into local frame to keep jacobian being simpliy identidy.
+    a_cmd = torso_task_.linear_acc
             + kp_body_Cartesian_
-              * (torso_state_task_.trans - torso_state.trans)
+              * (torso_task_.state.trans - torso_state.trans)
             + kd_body_Cartesian_
-              * (torso_state_task_.rot * torso_state_task_.linear_vel
+              * (torso_task_.state.rot * torso_task_.state.linear_vel
                  - torso_state.rot * torso_state.linear_vel);
     a_cmd = torso_state.rot.conjugate() * a_cmd;
 

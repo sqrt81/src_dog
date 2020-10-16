@@ -62,6 +62,7 @@ int main(int argc, char** argv)
     mpc->ConnectModel(model);
     mpc->ConnectTraj(traj);
     mpc->ConnectClock(clock);
+    wbc->ConnectTraj(traj);
     wbc->ConnectMPC(mpc);
     wbc->ConnectModel(model);
     wbc->ConnectClock(clock);
@@ -130,7 +131,7 @@ int main(int argc, char** argv)
         torso_traj.push_back(state);
 
         state.stamp = clock->Time() + 0.1;
-        state.state.trans = {0, 0, 0.35};
+        state.state.trans = {0, 0, 0.375};
         state.state.linear_vel = {0, 0, - 0.5};
         state.state.rot_vel = {0, 0, 0};
         torso_traj.push_back(state);
@@ -139,7 +140,7 @@ int main(int argc, char** argv)
         state.state.trans = {0, 0, 0.3};
         state.state.rot = Eigen::AngleAxisd(M_PI_4, Eigen::Vector3d::UnitX());
         state.state.linear_vel = {0, - 0.5 * sin(M_PI_4), - 0.5 * cos(M_PI_4)};
-        state.state.rot_vel = {M_PI_4 / 0.4, 0, 0};
+        state.state.rot_vel = {M_PI_4 / 0.2, 0, 0};
         torso_traj.push_back(state);
 
         state.stamp = clock->Time() + 0.5;
@@ -180,18 +181,6 @@ int main(int argc, char** argv)
             fs.vel.z() = 0;
             wbc->SetFootMotionTask(fs, Eigen::Vector3d::Zero());
         }
-
-        message::FloatingBaseState fbs;
-        fbs.trans = {0, 0, 0.4 - i * 0.15 / 500};
-        fbs.rot = rot;
-        fbs.linear_vel = {0, 0, - 0.3};
-        fbs.rot_vel.setZero();
-
-        if (i > 100)
-            fbs.rot_vel.x() = angle / 500 * 1000;
-
-        wbc->SetTorsoMotionTask(fbs, Eigen::Vector3d::Zero(),
-                                Eigen::Vector3d::Zero());
 
         ros::spinOnce();
 
@@ -277,13 +266,6 @@ int main(int argc, char** argv)
             fs.vel.setZero();
             wbc->SetFootMotionTask(fs, Eigen::Vector3d::Zero());
         }
-
-        Eigen::Vector3d torso_acc = {0, 0,
-                                     - len * utils::square(2 * M_PI / t)
-                                      * sin(iter * 2 * M_PI / duration)};
-
-        wbc->SetTorsoMotionTask(fbs, Eigen::Vector3d::Zero(),
-                                rot * torso_acc);
 
         ros::spinOnce();
 
