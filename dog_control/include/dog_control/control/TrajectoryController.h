@@ -17,6 +17,15 @@ namespace dog_control
 namespace control
 {
 
+/**
+ * @brief The TrajectoryController class
+ * Trajectory controller is not really a controller, for it
+ * controls nothing. Instead, it generates torso and foot trajectory
+ * and allow low-level controllers to query torso & foot locations.
+ * Thus, trajectory controller serves as an encapsulation of
+ * low-level controllers. High-level planners only needs to give
+ * waypoints of torso and feet, and leave the controlling behind.
+ */
 class TrajectoryController
 {
 protected:
