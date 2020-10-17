@@ -3,7 +3,9 @@
 
 #include "dog_control/utils/ClassDeclare.h"
 
+#include "dog_control/control/FootSwingTrajBase.h"
 #include "dog_control/message/ModelJointState.h"
+#include "dog_control/message/LegName.h"
 #include "dog_control/utils/ParamDict.h"
 #include "dog_control/utils/Queue.h"
 
@@ -30,10 +32,24 @@ public:
     void Initialize(utils::ParamDictCRef dict);
 
     void ConnectClock(boost::shared_ptr<hardware::ClockBase> clock);
+    void ConnectModel(boost::shared_ptr<physics::DogModel> model);
 
     void SetTorsoTrajectory(const TorsoTraj &torso_traj);
 
+    void SetFootTrajectory(message::LegName foot_name,
+                           boost::shared_ptr<FootSwingTrajBase> traj);
+
     FBState GetTorsoState(double t) const;
+
+    void GetCurLocalFootState(message::LegName foot_name,
+                              Eigen::Vector3d &pos,
+                              Eigen::Vector3d &vel) const;
+
+    void GetFootState(double t, message::LegName foot_name,
+                      Eigen::Vector3d &pos,
+                      Eigen::Vector3d &vel,
+                      Eigen::Vector3d &acc,
+                      bool &contact) const;
 
     void GetTorsoTraj(const std::vector<double>& time_stamp,
                       std::vector<FBState>& traj) const;
@@ -41,17 +57,29 @@ public:
     void SampleTrajFromNow(int sample_cnt, double interval,
                            std::vector<MPCState>& traj) const;
 
+    void SampleFootStateFromNow(
+            int sample_cnt, double interval,
+            std::vector<std::array<Eigen::Vector3d, 4>> &pos_seq,
+            std::vector<std::array<bool, 4>> &contact_seq) const;
+
     void Update();
+
 private:
+    int GetIndexForTime(double t) const;
+
     double dt_;
     int traj_record_len_;
 
     double traj_beg_time_;
 
     boost::weak_ptr<hardware::ClockBase> clock_ptr_;
+    boost::weak_ptr<physics::DogModel> model_ptr_;
 
     utils::Queue<FBState> torso_traj_;
+    std::array<boost::shared_ptr<FootSwingTrajBase>, 4> swing_traj_;
 
+    // stance leg foot state (local)
+    std::array<Eigen::Vector3d, 4> foot_pos_;
 };
 
 } /* control */

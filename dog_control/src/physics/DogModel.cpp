@@ -285,32 +285,23 @@ Eigen::VectorXd DogModel::Vq() const
     return vq;
 }
 
-Eigen::Vector3d DogModel::FootPos(LegName leg_name)
+Eigen::Vector3d DogModel::FootPos(LegName leg_name) const
 {
     VALID_LEGNAME(leg_name);
 
-    if (!kinematics_updated_)
-        ForwardKinematics();
-
-    return EEPos(leg_name);
+    return foot_pos_[leg_name];
 }
 
-Eigen::Vector3d DogModel::FootVel(LegName leg_name)
+Eigen::Vector3d DogModel::FootVel(LegName leg_name) const
 {
     VALID_LEGNAME(leg_name);
 
-    if (!kinematics_updated_)
-        ForwardKinematics();
-
-    return EEVel(leg_name);
+    return foot_vel_[leg_name];
 }
 
-DogModel::FullJacobMat DogModel::FullJacob(LegName leg_name)
+DogModel::FullJacobMat DogModel::FullJacob(LegName leg_name) const
 {
     VALID_LEGNAME(leg_name);
-
-    if (!kinematics_updated_)
-        ForwardKinematics();
 
     FullJacobMat jacob = FullJacobMat::Zero();
     const Eigen::Matrix3d foot_pos = ToLowerMatrix(FootPos(leg_name));
@@ -356,7 +347,7 @@ DogModel::FullJacobMat DogModel::FullJacob(LegName leg_name)
     return jacob;
 }
 
-Eigen::Vector3d DogModel::VJDotVq(LegName leg_name)
+Eigen::Vector3d DogModel::VJDotVq(LegName leg_name) const
 {
     VALID_LEGNAME(leg_name);
 
@@ -387,8 +378,8 @@ void DogModel::Update()
 {
     boost::shared_ptr<hardware::HardwareBase> hw = hw_ptr_.lock();
     boost::shared_ptr<estimator::EstimatorBase> est = est_ptr_.lock();
-    assert(hw);
-    assert(est);
+    CHECK(hw);
+    CHECK(est);
 
     message::StampedJointState js = hw->GetJointState();
 
@@ -412,6 +403,14 @@ void DogModel::Update()
     }
 
     SetJointMotionState(js_fb);
+
+    ForwardKinematics();
+
+    for (int i = 0; i < 4; i++)
+    {
+        foot_pos_[i] = EEPos(i);
+        foot_vel_[i] = EEVel(i);
+    }
 }
 
 } /* physics */

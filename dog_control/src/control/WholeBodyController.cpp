@@ -178,11 +178,22 @@ void WholeBodyController::Update()
     boost::shared_ptr<hardware::ClockBase> clock = clock_ptr_.lock();
     CHECK(clock) << "[WBC] clock is not set!";
 
-    mpc->GetFeetForce(clock->Time(), ref_force_, foot_contact_);
+    const double cur_time = clock->Time();
+
+    mpc->GetFeetForce(cur_time, ref_force_, foot_contact_);
 
     boost::shared_ptr<control::TrajectoryController> traj = traj_ptr_.lock();
     CHECK(traj) << "[WBC] traj is not set!";
-    torso_task_ = traj->GetTorsoState(clock->Time());
+    torso_task_ = traj->GetTorsoState(cur_time);
+
+    for (int i = 0; i < 4; i++)
+    {
+        traj->GetFootState(cur_time, static_cast<message::LegName>(i),
+                           foot_state_task_[i].pos,
+                           foot_state_task_[i].vel,
+                           foot_acc_task_[i],
+                           foot_contact_[i]);
+    }
 
     boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
     CHECK(model) << "[WBC] Model is not set!";
@@ -231,6 +242,7 @@ void WholeBodyController::Update()
             + kd_body_Cartesian_
               * (torso_task_.state.rot * torso_task_.state.linear_vel
                  - torso_state.rot * torso_state.linear_vel);
+
     a_cmd = torso_state.rot.conjugate() * a_cmd;
 
 //    Eigen::MatrixXd null_space

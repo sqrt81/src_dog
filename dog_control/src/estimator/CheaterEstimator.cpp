@@ -1,5 +1,7 @@
 #include "dog_control/estimator/CheaterEstimator.h"
 
+#include "dog_control/utils/MiniLog.h"
+
 #include <eigen_conversions/eigen_msg.h>
 
 namespace dog_control

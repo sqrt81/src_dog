@@ -1,11 +1,11 @@
 #ifndef DOG_CONTROL_CONTROL_FOOTPOSCONTROLLER_H
 #define DOG_CONTROL_CONTROL_FOOTPOSCONTROLLER_H
 
-#include "dog_control/utils/ParamDict.h"
+#include "dog_control/utils/ClassDeclare.h"
 
 #include "dog_control/message/FootState.h"
 #include "dog_control/message/MotorCommand.h"
-#include "dog_control/utils/ClassDeclare.h"
+#include "dog_control/utils/ParamDict.h"
 
 #include <array>
 #include <boost/weak_ptr.hpp>
@@ -38,8 +38,8 @@ public:
 
     void Initialize(utils::ParamDictCRef dict);
 
-    void ConnectHardware(boost::shared_ptr<hardware::HardwareBase> hw);
     void ConnectModel(boost::shared_ptr<physics::DogModel> model);
+    void ConnectTraj(boost::shared_ptr<TrajectoryController> traj);
 
     void SetPipelineData(boost::shared_ptr<message::MotorCommand> cmd);
 
@@ -59,7 +59,7 @@ public:
 
 private:
     boost::weak_ptr<physics::DogModel> model_ptr_;
-    boost::weak_ptr<hardware::HardwareBase> hw_ptr_;
+    boost::weak_ptr<TrajectoryController> traj_ptr_;
 
     boost::shared_ptr<message::MotorCommand> cmd_;
 

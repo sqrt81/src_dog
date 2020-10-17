@@ -5,7 +5,7 @@
 
 using namespace dog_control;
 
-int main()
+int test_SwingTraj()
 {
     double t1 = 0.1;
     double t2 = 0.3;

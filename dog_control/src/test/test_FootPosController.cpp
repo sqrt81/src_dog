@@ -34,7 +34,6 @@ int testFootPosController(int argc, char** argv)
     model->ConnectEstimator(estimator);
     estimator->ConnectHardware(hw);
     estimator->ConnectModel(model);
-    controller->ConnectHardware(hw);
     controller->ConnectModel(model);
 
     // spin once to update hardware

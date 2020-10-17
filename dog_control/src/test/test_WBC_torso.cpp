@@ -44,7 +44,6 @@ int test_WBC_torso(int argc, char** argv)
     model->ConnectEstimator(estimator);
     estimator->ConnectHardware(hw);
     estimator->ConnectModel(model);
-    controller->ConnectHardware(hw);
     controller->ConnectModel(model);
     wbc->ConnectModel(model);
 

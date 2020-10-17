@@ -1,12 +1,12 @@
 #include "dog_control/control/FootPosController.h"
 
+#include "dog_control/hardware/ClockBase.h"
+#include "dog_control/control/TrajectoryController.h"
 #include "dog_control/hardware/HardwareBase.h"
 #include "dog_control/physics/DogModel.h"
+#include "dog_control/utils/Initializer.h"
 #include "dog_control/utils/Math.h"
 #include "dog_control/utils/MiniLog.h"
-#include "dog_control/utils/Initializer.h"
-
-#include <cassert>
 
 namespace dog_control {
 
@@ -31,16 +31,16 @@ void FootPosController::Initialize(utils::ParamDictCRef dict)
     (void) dict;
 }
 
-void FootPosController::ConnectHardware(
-        boost::shared_ptr<hardware::HardwareBase> hw)
-{
-    hw_ptr_ = hw;
-}
-
 void FootPosController::ConnectModel(
         boost::shared_ptr<physics::DogModel> model)
 {
     model_ptr_ = model;
+}
+
+void FootPosController::ConnectTraj(
+        boost::shared_ptr<TrajectoryController> traj)
+{
+    traj_ptr_ = traj;
 }
 
 void FootPosController::SetPipelineData(
@@ -51,14 +51,14 @@ void FootPosController::SetPipelineData(
 
 void FootPosController::ChangeFootControlMethod(LegConfigCRef config)
 {
-    assert(VALID_LEGNAME(config.foot_name));
+    CHECK(VALID_LEGNAME(config.foot_name));
 
     config_[config.foot_name] = config;
 }
 
 void FootPosController::SetFootStateCmd(FootStateCRef foot_state)
 {
-    assert(VALID_LEGNAME(foot_state.foot_name));
+    CHECK(VALID_LEGNAME(foot_state.foot_name));
 
     cmd_footstate_[foot_state.foot_name] = foot_state;
 }
@@ -71,18 +71,18 @@ void FootPosController::SetJointForceCmd(const JointForces &joint_forces)
 message::FootState FootPosController::GetFootState(
         message::LegName foot_name) const
 {
-    assert(VALID_LEGNAME(foot_name));
+    CHECK(VALID_LEGNAME(foot_name));
 
     return real_footstate_[foot_name];
 }
 
 void FootPosController::Update()
 {
-    boost::shared_ptr<hardware::HardwareBase> hw = hw_ptr_.lock();
     boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
+    CHECK(model) << "[FootPosController] Model is not set!";
 
-    assert(hw);
-    assert(model);
+    boost::shared_ptr<TrajectoryController> traj = traj_ptr_.lock();
+    CHECK(traj) << "[FootPosController] Traj is not set!";
 
     // update foot position and velocity
     for (unsigned int i = 0; i < 4; i++)
@@ -94,9 +94,12 @@ void FootPosController::Update()
     }
 
     // apply commands
-
     for (unsigned int i = 0; i < 4; i++)
     {
+        traj->GetCurLocalFootState(static_cast<message::LegName>(i),
+                                   cmd_footstate_[i].pos,
+                                   cmd_footstate_[i].vel);
+
         message::SingleMotorCommand* offset_cmd = cmd_->data() + i * 3;
         LegConfigCRef config = config_[i];
 

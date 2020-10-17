@@ -158,6 +158,8 @@ void ModelPredictiveController::Update()
 
     traj->SampleTrajFromNow(pred_horizon_ + 1, pred_interval_,
                             desired_traj_);
+    traj->SampleFootStateFromNow(pred_horizon_, pred_interval_,
+                                 feet_pos_seq_, contact_seq_);
 
     CHECK(desired_traj_.size() >= static_cast<unsigned>(pred_horizon_) + 1)
             << "[MPC] torso trajectory length " << desired_traj_.size()

@@ -1,5 +1,7 @@
 #include "dog_control/optimization/QuadSolver.h"
 
+#include "dog_control/utils/MiniLog.h"
+
 namespace dog_control
 {
 
@@ -195,12 +197,12 @@ double SolveQuadProg(const Eigen::MatrixXd& G, const Eigen::VectorXd& g0,
     const int p = CE.cols();
     const int m = CI.cols();
 
-    assert(G.rows() == n);
-    assert(g0.size() == n);
-    assert(CE.rows() == n);
-    assert(ce0.size() == p);
-    assert(CI.rows() == n);
-    assert(ci0.size() == m);
+    CHECK(G.rows() == n);
+    CHECK(g0.size() == n);
+    CHECK(CE.rows() == n);
+    CHECK(ce0.size() == p);
+    CHECK(CI.rows() == n);
+    CHECK(ci0.size() == m);
 
     x.resize(n);
 

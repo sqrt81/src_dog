@@ -53,7 +53,6 @@ int test_MPC_linear(int argc, char** argv)
     model->ConnectEstimator(estimator);
     estimator->ConnectHardware(hw);
     estimator->ConnectModel(model);
-    controller->ConnectHardware(hw);
     controller->ConnectModel(model);
     mpc->ConnectModel(model);
     mpc->ConnectClock(clock);

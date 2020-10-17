@@ -11,7 +11,6 @@
 #include "dog_control/physics/EigenToolbox.h"
 
 #include <ros/ros.h>
-//#include <iostream>
 
 using namespace dog_control;
 
@@ -57,8 +56,8 @@ int test_Traj_stance(int argc, char** argv)
     model->ConnectEstimator(estimator);
     estimator->ConnectHardware(hw);
     estimator->ConnectModel(model);
-    foot_ctrl->ConnectHardware(hw);
     foot_ctrl->ConnectModel(model);
+    foot_ctrl->ConnectTraj(traj);
     mpc->ConnectModel(model);
     mpc->ConnectTraj(traj);
     mpc->ConnectClock(clock);
@@ -67,12 +66,14 @@ int test_Traj_stance(int argc, char** argv)
     wbc->ConnectModel(model);
     wbc->ConnectClock(clock);
     traj->ConnectClock(clock);
+    traj->ConnectModel(model);
 
-    // spin once to update hardware
-    ros::spinOnce();
-
-    // wait for time message
-    ros::Duration(0.01).sleep();
+    // spin to update hardware and time
+    for (int i = 0; i < 10; i++)
+    {
+        ros::spinOnce();
+        ros::Duration(0.001).sleep();
+    }
 
     clock->Update();
     estimator->Update();
@@ -80,14 +81,11 @@ int test_Traj_stance(int argc, char** argv)
     foot_ctrl->Update();
     traj->Update();
 
-//    std::cout << std::endl;
-    std::endl(std::cout);
-
     message::LegConfiguration conf;
     conf.hip_outwards = true;
     conf.knee_outwards = true;
-    conf.kd = 0.1;
-    conf.kp = 0.3;
+    conf.kd = 1;
+    conf.kp = 3;
 
     for (int i = 0; i < 4; i++)
     {
@@ -97,27 +95,6 @@ int test_Traj_stance(int argc, char** argv)
 
     const double angle = M_PI_2;
     int iter = 0;
-
-    // compute desired trajectory
-//    control::ModelPredictiveController::TorsoTraj torso_traj(6);
-    control::ModelPredictiveController::FeetPosSeq fseq(6);
-    control::ModelPredictiveController::FeetContactSeq fcseq(6);
-
-    for (int j = 0; j < 6; j++)
-    {
-        std::array<Eigen::Vector3d, 4>& fps = fseq[j];
-        std::array<bool, 4>& fcs = fcseq[j];
-
-        for(int k = 0; k < 4; k++)
-        {
-            fps[k] = {0.283 * (k < 2      ? 1 : - 1),
-                      0.118 * (k % 2 == 0 ? 1 : - 1),
-                      0};
-            fcs[k] = true;
-        }
-    }
-
-    mpc->SetFeetPose(fseq, fcseq);
 
     {
         std::vector<message::StampedFloatingBaseState> torso_traj;
@@ -163,24 +140,6 @@ int test_Traj_stance(int argc, char** argv)
         iter++;
         Eigen::AngleAxisd rot((i < 100 ? 0 :  i - 100) * angle / 400,
                               Eigen::Vector3d::UnitX());
-
-        for (int j = 0; j < 4; j++)
-        {
-            message::FootState fs;
-            fs.foot_name = static_cast<message::LegName>(j);
-            fs.pos = {0.283 * (j < 2      ? 1 : - 1),
-                      0.118 * (j % 2 == 0 ? 1 : - 1),
-                      - 0.4 + i * 0.15 / 500};
-            fs.pos = rot.inverse() * fs.pos;
-            fs.vel = {0, 0, 0.3};
-            foot_ctrl->SetFootStateCmd(fs);
-
-            fs.pos = {0.283 * (j < 2      ? 1 : - 1),
-                      0.118 * (j % 2 == 0 ? 1 : - 1),
-                      0};
-            fs.vel.z() = 0;
-            wbc->SetFootMotionTask(fs, Eigen::Vector3d::Zero());
-        }
 
         ros::spinOnce();
 
@@ -238,34 +197,6 @@ int test_Traj_stance(int argc, char** argv)
         rot = rot * Eigen::AngleAxisd(
                     len * sin(iter * 2 * M_PI / duration),
                     Eigen::Vector3d::UnitZ());
-
-        message::FloatingBaseState fbs;
-        fbs.trans = {0, 0, 0.25};
-        fbs.rot = rot;
-        fbs.linear_vel = {0, 0, 0};
-        fbs.rot_vel.setZero();
-        fbs.rot_vel.z() = len * 2 * M_PI / t
-                * cos(iter * 2 * M_PI / duration);
-
-        for (int i = 0; i < 4; i++)
-        {
-            message::FootState fs;
-            fs.foot_name = static_cast<message::LegName>(i);
-            fs.pos = {0.283 * (i < 2      ? 1 : - 1),
-                      0.118 * (i % 2 == 0 ? 1 : - 1),
-                      - 0.25};
-            fs.vel = - fbs.rot_vel.cross(fs.pos); // global
-            fs.vel = rot.inverse() * fs.vel; // local
-            fs.pos = rot.inverse() * fs.pos;
-            foot_ctrl->SetFootStateCmd(fs);
-
-            fs.pos = {0.283 * (i < 2      ? 1 : - 1),
-                      0.118 * (i % 2 == 0 ? 1 : - 1),
-                      0.};
-//            fs.pos = rot.inverse() * fs.pos;
-            fs.vel.setZero();
-            wbc->SetFootMotionTask(fs, Eigen::Vector3d::Zero());
-        }
 
         ros::spinOnce();
 

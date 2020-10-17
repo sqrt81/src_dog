@@ -21,6 +21,7 @@ class DogModel : protected spatial::FloatingBaseModel
 protected:
     using JointState3 = message::JointState3;
     using LegName = message::LegName;
+
 public:
     using FullJacobMat = Eigen::Matrix<double, 3, 18>;
     using JointForce = Eigen::Matrix<double, 12, 1>;
@@ -70,7 +71,7 @@ public:
      * @param leg_name          the leg to compute
      * @return                  global foot position
      */
-    Eigen::Vector3d FootPos(LegName leg_name);
+    Eigen::Vector3d FootPos(LegName leg_name) const;
 
     /**
      * @brief FootVel
@@ -78,7 +79,7 @@ public:
      * @param leg_name          the leg to compute
      * @return                  global foot velocity
      */
-    Eigen::Vector3d FootVel(LegName leg_name);
+    Eigen::Vector3d FootVel(LegName leg_name) const;
 
     /**
      * @brief FullJacob
@@ -87,9 +88,9 @@ public:
      * @param leg_name          the leg to compute
      * @return                  jacobian matrix.
      */
-    FullJacobMat FullJacob(LegName leg_name);
+    FullJacobMat FullJacob(LegName leg_name) const;
 
-    Eigen::Vector3d VJDotVq(LegName leg_name);
+    Eigen::Vector3d VJDotVq(LegName leg_name) const;
 
     /**
      * @brief Friction
@@ -111,6 +112,10 @@ private:
     double friction_;
     double damping_;
     double vel_deadband_;
+
+    // foot pos and vel
+    std::array<Eigen::Vector3d, 4> foot_pos_;
+    std::array<Eigen::Vector3d, 4> foot_vel_;
 
     boost::weak_ptr<hardware::HardwareBase> hw_ptr_;
     boost::weak_ptr<estimator::EstimatorBase> est_ptr_;

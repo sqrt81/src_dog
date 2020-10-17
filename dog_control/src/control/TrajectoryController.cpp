@@ -1,6 +1,7 @@
 #include "dog_control/control/TrajectoryController.h"
 
 #include "dog_control/hardware/ClockBase.h"
+#include "dog_control/physics/DogModel.h"
 #include "dog_control/utils/CubicSpline.h"
 #include "dog_control/utils/CubicSplineImpl.hpp"
 #include "dog_control/utils/MiniLog.h"
@@ -24,6 +25,12 @@ void TrajectoryController::ConnectClock(
         boost::shared_ptr<hardware::ClockBase> clock)
 {
     clock_ptr_ = clock;
+}
+
+void TrajectoryController::ConnectModel(
+        boost::shared_ptr<physics::DogModel> model)
+{
+    model_ptr_ = model;
 }
 
 void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
@@ -61,15 +68,17 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
     double last_time = traj_beg_time_ + (index - 1) * dt_;
     message::FloatingBaseState last_state;
 
-    if (torso_traj_.size())
-        last_state = torso_traj_[index - 1].state;
-    else // first run
+    const bool first_run = (torso_traj_.size() == 0);
+
+    if (first_run)
     {
         last_state = torso_traj[iter].state;
         last_time = torso_traj[iter].stamp;
         traj_beg_time_ = last_time;
         iter++;
     }
+    else
+        last_state = torso_traj_[index - 1].state;
 
     last_state.linear_vel = last_state.rot * last_state.linear_vel;
     last_state.rot_vel = last_state.rot * last_state.rot_vel;
@@ -132,19 +141,123 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
         last_time = next_time;
         last_state = next_state;
     }
+
+    if (first_run)
+    {
+        // init foot pos for first run
+        boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
+        CHECK(model) << "[TrajController] Model is not set!";
+
+        for (int i = 0; i < 4; i++)
+            if (!swing_traj_[i])
+            {
+                foot_pos_[i]
+                        = model->FootPos(static_cast<message::LegName>(i));
+            }
+    }
+}
+
+void TrajectoryController::SetFootTrajectory(
+        message::LegName foot_name, boost::shared_ptr<FootSwingTrajBase> traj)
+{
+    CHECK(VALID_LEGNAME(foot_name));
+
+    if (traj->EndTime() < traj_beg_time_)
+        LOG(WARN) << "[TrajController] foot traj is outdated, rejected.";
+    else
+        swing_traj_[foot_name] = traj;
 }
 
 TrajectoryController::FBState
 TrajectoryController::GetTorsoState(double t) const
 {
-    if (t < traj_beg_time_)
-        return torso_traj_.Head();
+    return torso_traj_[GetIndexForTime(t)];
+}
 
-    if (t > traj_beg_time_ + dt_ * torso_traj_.size())
-        return  torso_traj_.Tail();
+void TrajectoryController::GetCurLocalFootState(
+        message::LegName foot_name,
+        Eigen::Vector3d &pos,
+        Eigen::Vector3d &vel) const
+{
+    CHECK(VALID_LEGNAME(foot_name));
 
-    const int index = static_cast<int>((t - traj_beg_time_) / dt_);
-    return torso_traj_[index];
+    const message::FloatingBaseState& cur_state = torso_traj_.Head().state;
+
+    if (!swing_traj_[foot_name]
+            || traj_beg_time_ < swing_traj_[foot_name]->BeginTime())
+    {
+        pos = cur_state.rot.conjugate()
+                * (foot_pos_[foot_name] - cur_state.trans);
+        vel = - cur_state.linear_vel;
+    }
+    else
+    {
+        Eigen::Vector3d acc;
+        swing_traj_[foot_name]->Sample(traj_beg_time_, pos, vel, acc);
+    }
+}
+
+void TrajectoryController::GetFootState(double t,
+                                        message::LegName foot_name,
+                                        Eigen::Vector3d &pos,
+                                        Eigen::Vector3d &vel,
+                                        Eigen::Vector3d &acc,
+                                        bool &contact) const
+{
+    CHECK(VALID_LEGNAME(foot_name));
+
+    if (swing_traj_[foot_name])
+    {
+        const FootSwingTrajBase& traj = *swing_traj_[foot_name];
+
+        Eigen::Vector3d local_pos;
+        Eigen::Vector3d local_vel;
+        Eigen::Vector3d local_acc;
+        traj.Sample(t, local_pos, local_vel, local_acc);
+
+        if (t > traj.EndTime())
+        {
+            // In this case, the foot has done swinging. So the foot global
+            // position equals to its position when swing just finished.
+            // The foot's velocity and acceleration are zero (since it stays
+            // in contact with ground).
+            const FBState& stat = torso_traj_[GetIndexForTime(traj.EndTime())];
+            pos = stat.state.trans + stat.state.rot * local_pos;
+            vel.setZero();
+            acc.setZero();
+            contact = true;
+
+            return;
+        }
+
+        else if (t >= traj.BeginTime())
+        {
+            // The foot is swinging. Convert into global frame.
+            const FBState& stat = torso_traj_[GetIndexForTime(t)];
+            pos = stat.state.trans + stat.state.rot * local_pos;
+            vel = stat.state.rot * (stat.state.linear_vel + local_vel
+                                    + stat.state.rot_vel.cross(local_pos));
+            acc = stat.state.rot * (
+                        stat.linear_acc + local_acc
+                        - stat.state.rot_vel.squaredNorm() * local_pos
+                        + stat.rot_acc.cross(local_pos)
+                        + 2 * stat.state.rot_vel.cross(local_vel));
+            contact = true;
+
+            return;
+        }
+    }
+
+    // If the following lines are executed, it suggests either
+    // there is no swing trajectory for this foot or the swing
+    // trajectory has not yet begun at the sample time.
+    // So the foot has not moved in global frame.
+    pos = foot_pos_[foot_name];
+    vel.setZero();
+    acc.setZero();
+    contact = true;
+
+    return;
 }
 
 void TrajectoryController::GetTorsoTraj(
@@ -156,15 +269,7 @@ void TrajectoryController::GetTorsoTraj(
 
     for (const double t : time_stamp)
     {
-        if (t < traj_beg_time_)
-            traj.push_back(torso_traj_.Head());
-        else if (t > traj_beg_time_ + dt_ * torso_traj_.size())
-            traj.push_back(torso_traj_.Tail());
-        else
-        {
-            const int index = static_cast<int>((t - traj_beg_time_) / dt_);
-            traj.push_back(torso_traj_[index]);
-        }
+        traj.push_back(torso_traj_[GetIndexForTime(t)]);
     }
 }
 
@@ -183,14 +288,68 @@ void TrajectoryController::SampleTrajFromNow(int sample_cnt, double interval,
     {
         const double t = cur_time + i * interval;
 
-        if (t < traj_beg_time_)
-            traj.push_back(torso_traj_.Head().state);
-        else if (t > traj_beg_time_ + dt_ * torso_traj_.size())
-            traj.push_back(torso_traj_.Tail().state);
+        traj.push_back(torso_traj_[GetIndexForTime(t)].state);
+    }
+}
+
+void TrajectoryController::SampleFootStateFromNow(
+        int sample_cnt, double interval,
+        std::vector<std::array<Eigen::Vector3d, 4>> &pos_seq,
+        std::vector<std::array<bool, 4>> &contact_seq) const
+{
+    boost::shared_ptr<hardware::ClockBase> clock = clock_ptr_.lock();
+    CHECK(clock) << "[TrajController] clock is not set!";
+
+    const double cur_time = clock->Time();
+
+    pos_seq.resize(sample_cnt);
+    contact_seq.resize(sample_cnt);
+
+    const FootSwingTrajBase* traj[4];
+
+    for (int j = 0; j < 4; j++)
+        if (swing_traj_[j])
+            traj[j] = swing_traj_[j].get();
         else
+            traj[j] = nullptr;
+
+    for (int i = 0; i < sample_cnt; i++)
+    {
+        const double t = cur_time + i * interval;
+        const FBState& cur_stat = torso_traj_[GetIndexForTime(t)];
+
+        for (int j = 0; j < 4; j++)
         {
-            const int index = static_cast<int>((t - traj_beg_time_) / dt_);
-            traj.push_back(torso_traj_[index].state);
+            if (traj[j] == nullptr || t < traj[j]->BeginTime())
+            {
+                // no swing traj given, or swinging hasn't begun
+                pos_seq[i][j] = foot_pos_[j];
+                contact_seq[i][j] = true;
+            }
+            else
+            {
+                Eigen::Vector3d local_pos;
+                Eigen::Vector3d local_vel;
+                Eigen::Vector3d local_acc;
+                traj[j]->Sample(t, local_pos, local_vel, local_acc);
+
+                if (t > traj[j]->EndTime())
+                {
+                    // swing finished
+                    const FBState& end_stat
+                            = torso_traj_[GetIndexForTime(traj[j]->EndTime())];
+                    pos_seq[i][j] = end_stat.state.trans
+                                  + end_stat.state.rot * local_pos;
+                    contact_seq[i][j] = true;
+                }
+                else
+                {
+                    // swinging
+                    pos_seq[i][j] = cur_stat.state.trans
+                                  + cur_stat.state.rot * local_pos;
+                    contact_seq[i][j] = false;
+                }
+            }
         }
     }
 }
@@ -217,6 +376,35 @@ void TrajectoryController::Update()
         index = torso_traj_.size() - 1;
 
     torso_traj_.EraseHead(index);
+
+    const FBState& beg_stat = torso_traj_.Head();
+
+    // remove a trajectory if it has been executed
+    for (int i = 0; i < 4; i++)
+    {
+        if (swing_traj_[i] && swing_traj_[i]->EndTime() < traj_beg_time_)
+        {
+            Eigen::Vector3d pos;
+            Eigen::Vector3d vel;
+            Eigen::Vector3d acc;
+            swing_traj_[i]->Sample(traj_beg_time_, pos, vel, acc);
+            foot_pos_[i] = beg_stat.state.trans + beg_stat.state.rot * pos;
+
+            swing_traj_[i].reset();
+        }
+    }
+}
+
+inline int TrajectoryController::GetIndexForTime(double t) const
+{
+    int index = static_cast<int>((t - traj_beg_time_) / dt_);
+
+    if (t < traj_beg_time_)
+        index = 0;
+    else if (t > traj_beg_time_ + dt_ * torso_traj_.size())
+        index = torso_traj_.size() - 1;
+
+    return index;
 }
 
 } /* control */
