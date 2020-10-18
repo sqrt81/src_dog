@@ -1,3 +1,18 @@
+/*
+    Cubic spline for rotation represented in quaternion.
+    This file implements a method of Lagrange interpolation
+    for quaternion.
+    The method used in this file is described in
+    http://qspline.sourceforge.net/qspline.pdf
+
+    Note that by this method, all velocities and accelerations
+    are expressed in local frame. For example, when constructing
+    a "CubicSpline" object, the argument v1 should be
+    velocity at time t1, expressed in t1's local frame (whose
+    rotation is represented by x1), and the argument v2 should
+    be velocity at time t2, expressed in t2's local frame.
+*/
+
 #ifndef DOG_CONTROL_UTILS_QUATSPLINEIMPL_HPP
 #define DOG_CONTROL_UTILS_QUATSPLINEIMPL_HPP
 
@@ -29,8 +44,6 @@ CubicSpline<Eigen::Quaterniond, Eigen::Vector3d>::CubicSpline(
     const double inv_delta_t_2 = square(inv_delta_t);
 
     const Eigen::Quaterniond delta_q = x1.conjugate() * x2;
-    // vf is rotational vel v2 expressed in x1's frame
-    const Eigen::Vector3d vf = v2; //delta_q.conjugate() * v2;
 
     // norm is the rotation angle, and vec is the unit rotation direction.
     const double norm = 2 * std::atan2(delta_q.vec().norm(), delta_q.w());
@@ -40,7 +53,7 @@ CubicSpline<Eigen::Quaterniond, Eigen::Vector3d>::CubicSpline(
     if (is_zero(norm))
     {
         theta = Eigen::Vector3d::Zero();
-        dtheta = vf;
+        dtheta = v2;
     }
     else
     {
@@ -48,9 +61,9 @@ CubicSpline<Eigen::Quaterniond, Eigen::Vector3d>::CubicSpline(
         const double coef = 0.5 * (norm * sin(norm) / (1 - cos(norm)));
 
         theta = norm * vec;
-        dtheta = (1 - coef) * vec.dot(vf) * vec
-               + coef * vf
-               + 0.5 * norm * vec.cross(vf);
+        dtheta = (1 - coef) * vec.dot(v2) * vec
+               + coef * v2
+               + 0.5 * norm * vec.cross(v2);
     }
 
     theta -= delta_t * v1;
@@ -89,10 +102,9 @@ void CubicSpline<Eigen::Quaterniond, Eigen::Vector3d>::Sample(
         const double cth_1 = 1 - cos(norm);
 
         x = a0_ * dq;
-        v = /*dq.conjugate() * */(
-                    (norm - sth) * vec.dot(dtheta) * vec
-                    + sth * dtheta
-                    - cth_1 * vec.cross(dtheta)) / norm;
+        v = ((norm - sth) * vec.dot(dtheta) * vec
+             + sth * dtheta
+             - cth_1 * vec.cross(dtheta)) / norm;
     }
 }
 
@@ -140,13 +152,11 @@ void CubicSpline<Eigen::Quaterniond, Eigen::Vector3d>::Sample(
         v = ((norm - sth) * vec.dot(dtheta) * vec
              + sth * dtheta
              - cth_1 * vec.cross(dtheta)) / norm;
-        a = /*dq.conjugate() * */(
-                    ddnorm * vec
-                    + sth * dw.cross(vec)
-                    - cth_1 * dw
-                    + dnorm * w.cross(vec)
-                    + v.cross(dnorm * vec - w));
-//        v = dq.conjugate() * v;
+        a = ddnorm * vec
+          + sth * dw.cross(vec)
+          - cth_1 * dw
+          + dnorm * w.cross(vec)
+          + v.cross(dnorm * vec - w);
     }
 }
 
