@@ -113,12 +113,12 @@ int main(int argc, char** argv)
         state.state.rot_vel = {0, 0, 0};
         torso_traj.push_back(state);
 
-        state.stamp = clock->Time() + 0.3;
-        state.state.trans = {0, 0, 0.3};
-        state.state.rot = Eigen::AngleAxisd(M_PI_4, Eigen::Vector3d::UnitX());
-        state.state.linear_vel = {0, - 0.5 * sin(M_PI_4), - 0.5 * cos(M_PI_4)};
-        state.state.rot_vel = {M_PI_4 / 0.2, 0, 0};
-        torso_traj.push_back(state);
+//        state.stamp = clock->Time() + 0.3;
+//        state.state.trans = {0, 0, 0.3};
+//        state.state.rot = Eigen::AngleAxisd(M_PI_4, Eigen::Vector3d::UnitX());
+//        state.state.linear_vel = {0, - 0.5 * sin(M_PI_4), - 0.5 * cos(M_PI_4)};
+//        state.state.rot_vel = {M_PI_4 / 0.2, 0, 0};
+//        torso_traj.push_back(state);
 
         state.stamp = clock->Time() + 0.5;
         state.state.trans = {0, 0, 0.25};
@@ -157,7 +157,7 @@ int main(int argc, char** argv)
 
     constexpr double len = 0.1;
     constexpr int duration = 400;
-    constexpr double t = duration / 1000.;
+//    constexpr double t = duration / 1000.;
 
     Eigen::AngleAxisd rot_base
             = Eigen::AngleAxisd(angle, Eigen::Vector3d::UnitX());
@@ -173,20 +173,28 @@ int main(int argc, char** argv)
             std::vector<message::StampedFloatingBaseState> torso_traj;
             const double sample_time = clock->Time();
 
-            for (int i = 0; i < 200; i++)
             {
                 message::StampedFloatingBaseState state;
-                const int offset = i * duration / 200;
-                state.stamp = sample_time + offset * 0.001;
                 state.state.trans = {0, 0, 0.25};
-                state.state.rot = rot_base;
-                state.state.rot = state.state.rot * Eigen::AngleAxisd(
-                            len * sin(offset * 2 * M_PI / duration),
-                            Eigen::Vector3d::UnitZ());
                 state.state.linear_vel = Eigen::Vector3d::Zero();
                 state.state.rot_vel = Eigen::Vector3d::Zero();
-                state.state.rot_vel.z() = len * 2 * M_PI / t
-                        * cos(offset * 2 * M_PI / duration);
+
+                state.stamp = sample_time + duration / 4 * 0.001;
+                state.state.rot = rot_base;
+                state.state.rot = state.state.rot * Eigen::AngleAxisd(
+                            len, Eigen::Vector3d::UnitZ());
+                torso_traj.push_back(state);
+
+                state.stamp = sample_time + 3 * duration / 4 * 0.001;
+                state.state.rot = rot_base;
+                state.state.rot = state.state.rot * Eigen::AngleAxisd(
+                            - len, Eigen::Vector3d::UnitZ());
+                torso_traj.push_back(state);
+
+                state.stamp = sample_time + 5 * duration / 4 * 0.001;
+                state.state.rot = rot_base;
+                state.state.rot = state.state.rot * Eigen::AngleAxisd(
+                            len, Eigen::Vector3d::UnitZ());
                 torso_traj.push_back(state);
             }
 

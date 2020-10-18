@@ -24,30 +24,51 @@ int test_TrajController(int argc, char** argv)
 
     clock->Update();
 
-    control::TrajectoryController::TorsoTraj traj(20);
+    control::TrajectoryController::TorsoTraj traj(4);
 
-    for (int i = 0; i < 20; i++)
     {
-        traj[i].stamp = clock->Time() + i * 0.01;
-
-        traj[i].state.trans = {sin(0.01 * i + 0.5), cos(0.01 * i + 0.5), 1};
-        traj[i].state.rot = Eigen::AngleAxisd(- 0.01 * i - 0.5,
+        traj[0].stamp = 0.05;
+        traj[0].state.trans = {sin(0.5), cos(0.5), 1};
+        traj[0].state.rot = Eigen::AngleAxisd(- 0.5,
                                               Eigen::Vector3d::UnitZ());
-        traj[i].state.linear_vel = {1, 0, 0};
-        traj[i].state.rot_vel = {0, 0, - 1};
+        traj[0].state.linear_vel = {1, 0, 0};
+        traj[0].state.rot_vel = {0, 0, 0};
+
+        traj[1].stamp = 0.1;
+        traj[1].state.trans = {sin(0.5), cos(0.5), 1};
+        traj[1].state.rot = Eigen::AngleAxisd(- 0.5,
+                                              Eigen::Vector3d::UnitZ());
+        traj[1].state.linear_vel = {1, 0, 0};
+        traj[1].state.rot_vel = {0.5, 0, 0};
+
+        traj[2].stamp = 1.1;
+        traj[2].state.trans = {sin(0.5 + 0.5), cos(0.5 + 0.5), 1};
+        traj[2].state.rot = Eigen::AngleAxisd(- 0.5 - 0.5,
+                                              Eigen::Vector3d::UnitZ());
+        traj[2].state.linear_vel = {1, 0, 0};
+        traj[2].state.rot_vel = {- 0.5, 0, 0};
+
+        traj[3].stamp = 1.15;
+        traj[3].state.trans = {sin(0.5 + 0.5), cos(0.5 + 0.5), 1};
+        traj[3].state.rot = Eigen::AngleAxisd(- 0.5 - 0.5,
+                                              Eigen::Vector3d::UnitZ());
+        traj[3].state.linear_vel = {1, 0, 0};
+        traj[3].state.rot_vel = {0, 0, 0};
     }
 
     traj_ctrl.SetTorsoTrajectory(traj);
-    traj_ctrl.Update();
+//    traj_ctrl.Update();
 
-    for (int i = 0; i < 20; i++)
+    for (int i = 0; i < 23; i++)
     {
-        double t = clock->Time() + 0.005 + i * 0.01;
+        double t = 0.05 + i * 0.05;
         auto res = traj_ctrl.GetTorsoState(t);
 
         LOG(INFO) << "iter " << i << " time " << t;
-        LOG(INFO) << "res: " << res.state.trans.transpose();
-        LOG(INFO) << "vel: " << res.state.linear_vel.transpose();
-        LOG(INFO) << "acc: " << res.linear_acc.transpose();
+        LOG(INFO) << "res: " << res.state.rot.coeffs().transpose();
+        LOG(INFO) << "vel: " << res.state.rot_vel.transpose();
+        LOG(INFO) << "acc: " << res.rot_acc.transpose() << std::endl;
     }
+
+    return 0;
 }

@@ -14,14 +14,14 @@ namespace utils
  * f(t1) = x1;  f'(t1) = v1;
  * f(t2) = x2;  f'(t2) = v2;
  */
-template <typename T>
+template <typename T, typename dT = T>
 class CubicSpline
 {
 public:
     CubicSpline() = default;
 
-    CubicSpline(double t1, T x1, T v1,
-                double t2, T x2, T v2);
+    CubicSpline(double t1, const T &x1, const dT &v1,
+                double t2, const T &x2, const dT &v2);
 
     /**
      * @brief Sample
@@ -29,7 +29,7 @@ public:
      * at time t.
      * Here, x = f(t), v = f'(t)
      */
-    void Sample(double t, T &x, T &v) const;
+    void Sample(double t, T &x, dT &v) const;
 
     /**
      * @brief Sample
@@ -37,14 +37,14 @@ public:
      * first and second order derivative at time t.
      * x = f(t), v = f'(t), a = f''(t)
      */
-    void Sample(double t, T &x, T &v, T& a) const;
+    void Sample(double t, T &x, dT &v, dT& a) const;
 
 private:
     double t0_;
     T a0_;
-    T a1_;
-    T a2_;
-    T a3_;
+    dT a1_;
+    dT a2_;
+    dT a3_;
 };
 
 } /* utils */

@@ -4,6 +4,7 @@
 #include "dog_control/physics/DogModel.h"
 #include "dog_control/utils/CubicSpline.h"
 #include "dog_control/utils/CubicSplineImpl.hpp"
+#include "dog_control/utils/QuatSplineImpl.hpp"
 #include "dog_control/utils/MiniLog.h"
 #include "dog_control/utils/QueueImpl.hpp"
 
@@ -69,36 +70,41 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
     message::FloatingBaseState last_state;
 
     const bool first_run = (torso_traj_.size() == 0);
+    double sample_time = last_time + dt_;
 
     if (first_run)
     {
         last_state = torso_traj[iter].state;
         last_time = torso_traj[iter].stamp;
         traj_beg_time_ = last_time;
+        sample_time = last_time; // sample the begin point of the traj
         iter++;
     }
     else
         last_state = torso_traj_[index - 1].state;
 
+    // The CubicSpline for Quaternion is tailored for local
+    // frame rotation representation. So the rotational velocity
+    // needs not to be converted into global frame.
+//    last_state.rot_vel = last_state.rot * last_state.rot_vel;
     last_state.linear_vel = last_state.rot * last_state.linear_vel;
-    last_state.rot_vel = last_state.rot * last_state.rot_vel;
-    double sample_time = last_time + dt_;
 
     for (; iter < torso_traj.size(); iter++)
     {
         message::FloatingBaseState next_state = torso_traj[iter].state;
+//        next_state.rot_vel = next_state.rot * next_state.rot_vel;
         next_state.linear_vel = next_state.rot * next_state.linear_vel;
-        next_state.rot_vel = next_state.rot * next_state.rot_vel;
         const double next_time = torso_traj[iter].stamp;
 
         utils::CubicSpline<Eigen::Vector3d> trans(
                     last_time, last_state.trans, last_state.linear_vel,
                     next_time, next_state.trans, next_state.linear_vel);
 
+        utils::CubicSpline<Eigen::Quaterniond, Eigen::Vector3d> rot(
+                    last_time, last_state.rot, last_state.rot_vel,
+                    next_time, next_state.rot, next_state.rot_vel);
+
         FBState cur_state;
-        cur_state.rot_acc
-                = (next_state.rot_vel - last_state.rot_vel)
-                / (next_time - last_time);
 
         while (sample_time < next_time)
         {
@@ -106,35 +112,23 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
             if (torso_traj_.size() >= traj_record_len_)
                 return;
 
-            const double ratio
-                    = (sample_time - last_time) / (next_time - last_time);
-
             trans.Sample(sample_time,
                          cur_state.state.trans,
                          cur_state.state.linear_vel,
                          cur_state.linear_acc);
+            rot.Sample(sample_time,
+                       cur_state.state.rot,
+                       cur_state.state.rot_vel,
+                       cur_state.rot_acc);
 
-            cur_state.state.rot = last_state.rot.slerp(ratio, next_state.rot);
-            cur_state.state.rot_vel = last_state.rot_vel
-                    + ratio * (next_state.rot_vel - last_state.rot_vel);
-
-            FBState rotated_state;
-            rotated_state.state.trans = cur_state.state.trans;
-            rotated_state.state.rot = cur_state.state.rot;
-            rotated_state.state.linear_vel
+            // rotate back into local frame
+            cur_state.state.linear_vel
                     = cur_state.state.rot.conjugate()
                     * cur_state.state.linear_vel;
-            rotated_state.state.rot_vel
-                    = cur_state.state.rot.conjugate()
-                    * cur_state.state.rot_vel;
-            rotated_state.linear_acc
+            cur_state.linear_acc
                     = cur_state.state.rot.conjugate()
                     * cur_state.linear_acc;
-            rotated_state.rot_acc
-                    = cur_state.state.rot.conjugate()
-                    * cur_state.rot_acc;
-            torso_traj_.Push(rotated_state);
-
+            torso_traj_.Push(cur_state);
             sample_time += dt_;
         }
 
@@ -401,7 +395,7 @@ inline int TrajectoryController::GetIndexForTime(double t) const
 
     if (t < traj_beg_time_)
         index = 0;
-    else if (t > traj_beg_time_ + dt_ * torso_traj_.size())
+    else if (t >= traj_beg_time_ + dt_ * torso_traj_.size())
         index = torso_traj_.size() - 1;
 
     return index;
