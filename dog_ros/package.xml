@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>dog_control</name>
+  <name>dog_ros</name>
   <version>0.0.0</version>
-  <description>The dog_control package</description>
+  <description>The dog_control ros package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->

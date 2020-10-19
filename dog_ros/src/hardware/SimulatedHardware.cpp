@@ -1,4 +1,4 @@
-#include "dog_control/hardware/SimulatedHardware.h"
+#include "dog_ros/hardware/SimulatedHardware.h"
 #include "dog_control/utils/Math.h"
 
 #include <eigen_conversions/eigen_msg.h>

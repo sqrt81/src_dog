@@ -1,6 +1,6 @@
 #include "dog_control/control/TrajectoryController.h"
 #include "dog_control/hardware/ClockBase.h"
-#include "dog_control/hardware/SimulatedHardware.h"
+#include "dog_ros/hardware/SimulatedHardware.h"
 #include "dog_control/utils/Initializer.h"
 #include "dog_control/utils/MiniLog.h"
 

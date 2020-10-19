@@ -1,6 +1,6 @@
 #include "dog_control/physics/DogModel.h"
-#include "dog_control/hardware/SimulatedHardware.h"
-#include "dog_control/estimator/CheaterEstimator.h"
+#include "dog_ros/hardware/SimulatedHardware.h"
+#include "dog_ros/estimator/CheaterEstimator.h"
 #include "dog_control/control/FootPosController.h"
 #include "dog_control/utils/Initializer.h"
 

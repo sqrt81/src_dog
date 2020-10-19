@@ -1,4 +1,7 @@
 #include "dog_control/utils/Initializer.h"
+
+#include "dog_control/utils/MiniLog.h"
+
 #include <lua.hpp>
 
 namespace dog_control
@@ -35,6 +38,10 @@ public:
         lua_pop(l_state, 1);
 
         file_ready = !luaL_dofile(l_state, lua_file.c_str());
+
+        if (!file_ready)
+            LOG(WARN) << "[LuaReader] Failed to read lua file \""
+                      << lua_file << "\". ";
     }
 
     ~LuaReader()
