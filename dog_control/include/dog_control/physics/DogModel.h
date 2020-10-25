@@ -55,9 +55,26 @@ public:
                                       const Eigen::Vector3d &foot_local_pos,
                                       bool knee_out, bool hip_out) const;
 
+    /**
+     * @brief ComputeJacobian
+     * Compute joint jacobian in torso's frame (local frame),
+     * with the given joint pos.
+     * @param leg_name          the leg to compute
+     * @param joint_pos         joint positions
+     * @return                  jacobian matrix
+     */
     Eigen::Matrix3d ComputeJacobian(
             LegName leg_name, const Eigen::Vector3d &joint_pos) const;
 
+    /**
+     * @brief ComputeDJacobian
+     * Compute the jacobian's derivative with respect to time,
+     * with the given joint states.
+     * @param leg_name          the leg to compute
+     * @param joint_pos         joint positions
+     * @param joint_vel         joint velocities
+     * @return                  dJ / dt
+     */
     Eigen::Matrix3d ComputeDJacobian(
             LegName leg_name, const Eigen::Vector3d &joint_pos,
             const Eigen::Vector3d &joint_vel) const;
@@ -70,6 +87,12 @@ public:
      */
     Eigen::Matrix3d LocalJacob(LegName leg_name) const;
 
+    /**
+     * @brief LocalDJacob
+     * Compute joint jacobian derivative in torso's frame (local frame).
+     * @param leg_name          the leg to compute
+     * @return                  dJ / dt
+     */
     Eigen::Matrix3d LocalDJacob(LegName leg_name) const;
 
 //    using spatial::FloatingBaseModel::SetJointMotionState;
