@@ -324,8 +324,7 @@ void WholeBodyController::Update()
     ce0_ = force_bias_.head<n_s>()
             + mass_.topRightCorner<n_s, n_j - n_s>() * aq.tail<n_j - n_s>();
 
-    /*float opt_res = */optimization::SolveQuadProg(
-                G_, g0_, CE_, ce0_, CI_, ci0_, res_opt);
+    optimization::SolveQuadProg(G_, g0_, CE_, ce0_, CI_, ci0_, res_opt);
 
     // tau = H * aq + C - J.transpose() * f_foot
     Eigen::VectorXd torq

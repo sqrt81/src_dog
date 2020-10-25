@@ -39,14 +39,14 @@ public:
      */
     virtual void Spin() = 0;
 
-    virtual void PublishCommand(MotorCommandCRef command) const = 0;
+    virtual void PublishCommand(MotorCommandCRef command) = 0;
 
     inline StampedJointState GetJointState() const
     {
         return joint_state_;
     }
 
-    inline StampedImu GetImuInfo() const
+    inline StampedImu GetImuData() const
     {
         return imu_info_;
     }

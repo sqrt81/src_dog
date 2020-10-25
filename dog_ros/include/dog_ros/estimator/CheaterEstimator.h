@@ -21,8 +21,6 @@ public:
 
     void Update() override;
 
-    void WriteResult(EstimatorResult &result) const override;
-
 private:
     void CheatedMsgSub(const gazebo_msgs::ModelStates& msg);
     ros::NodeHandle nh_;

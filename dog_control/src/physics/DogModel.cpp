@@ -169,6 +169,30 @@ void DogModel::ConnectEstimator(
     est_ptr_ = est;
 }
 
+Eigen::Vector3d DogModel::ComputeLocalPos(
+        LegName leg_name, const Eigen::Vector3d &joint_pos) const
+{
+    VALID_LEGNAME(leg_name);
+
+    const double c1 = cos(joint_pos(0));
+    const double s1 = sin(joint_pos(0));
+    const double c2 = cos(joint_pos(1));
+    const double s2 = sin(joint_pos(1));
+    const double c23 = cos(joint_pos(1) + joint_pos(2));
+    const double s23 = sin(joint_pos(1) + joint_pos(2));
+
+    const double shin_z = thigh_offset_z_ * c2 + shin_offset_z_ * c23;
+    const double shin_x = thigh_offset_z_ * s2 + shin_offset_z_ * s23;
+
+    const int sign_x = leg_name < 2      ? 1 : - 1;
+    const int sign_y = leg_name % 2 == 0 ? 1 : - 1;
+
+    return Eigen::Vector3d(
+                sign_x * (hip_pos_x_ + shin_x),
+                sign_y * (hip_len_y_ * c1 - shin_z * s1 + hip_pos_y_),
+                hip_len_y_ * s1 + shin_z * c1);
+}
+
 Eigen::Vector3d DogModel::InverseKinematics(LegName leg_name,
                                  const Eigen::Vector3d &foot_local_pos,
                                  bool knee_out, bool hip_out) const
@@ -203,6 +227,87 @@ Eigen::Vector3d DogModel::InverseKinematics(LegName leg_name,
     return Eigen::Vector3d(q1, q2, q3);
 }
 
+Eigen::Matrix3d DogModel::ComputeJacobian(
+        LegName leg_name, const Eigen::Vector3d &joint_pos) const
+{
+    VALID_LEGNAME(leg_name);
+
+    const double c1 = cos(joint_pos(0));
+    const double s1 = sin(joint_pos(0));
+    const double c2 = cos(joint_pos(1));
+    const double s2 = sin(joint_pos(1));
+    const double c23 = cos(joint_pos(1) + joint_pos(2));
+    const double s23 = sin(joint_pos(1) + joint_pos(2));
+
+    const double shin_z = thigh_offset_z_ * c2 + shin_offset_z_ * c23;
+    const double shin_x = thigh_offset_z_ * s2 + shin_offset_z_ * s23;
+
+    const int sign_x = leg_name < 2      ? 1 : - 1;
+    const int sign_y = leg_name % 2 == 0 ? 1 : - 1;
+
+    Eigen::Matrix3d jacob;
+
+    jacob(0, 0) = 0.;
+    jacob(0, 1) = sign_x * shin_z;
+    jacob(0, 2) = sign_x * shin_offset_z_ * c23;
+    jacob(1, 0) = sign_y * (- shin_z * c1 - hip_len_y_ * s1);
+    jacob(1, 1) = sign_y * shin_x * s1;
+    jacob(1, 2) = sign_y * shin_offset_z_ * s1 * s23;
+    jacob(2, 0) = - shin_z * s1 + hip_len_y_ * c1;
+    jacob(2, 1) = - shin_x * c1;
+    jacob(2, 2) = - shin_offset_z_ * c1 * s23;
+
+    return jacob;
+}
+
+Eigen::Matrix3d DogModel::ComputeDJacobian(
+        LegName leg_name, const Eigen::Vector3d &joint_pos,
+        const Eigen::Vector3d &joint_vel) const
+{
+    VALID_LEGNAME(leg_name);
+
+    const double c1 = cos(joint_pos(0));
+    const double s1 = sin(joint_pos(0));
+    const double c2 = cos(joint_pos(1));
+    const double s2 = sin(joint_pos(1));
+    const double c23 = cos(joint_pos(1) + joint_pos(2));
+    const double s23 = sin(joint_pos(1) + joint_pos(2));
+
+    const double v1 = joint_vel(0);
+    const double v2 = joint_vel(1);
+    const double v23 = joint_vel(1) + joint_vel(2);
+
+    const double dc1 = - s1 * v1;
+    const double ds1 = c1 * v1;
+    const double dc23 = - s23 * v23;
+    const double ds23 = c23 * v23;
+
+    const double shin_z = thigh_offset_z_ * c2 + shin_offset_z_ * c23;
+    const double shin_x = thigh_offset_z_ * s2 + shin_offset_z_ * s23;
+    const double d_shin_z
+            = - thigh_offset_z_ * s2 * v2 + shin_offset_z_ * dc23;
+    const double d_shin_x
+            = thigh_offset_z_ * c2 * v2 + shin_offset_z_ * ds23;
+
+    const int sign_x = leg_name < 2      ? 1 : - 1;
+    const int sign_y = leg_name % 2 == 0 ? 1 : - 1;
+
+    Eigen::Matrix3d djacob;
+
+    djacob(0, 0) = 0;
+    djacob(0, 1) = sign_x * d_shin_z;
+    djacob(0, 2) = sign_x * shin_offset_z_ * dc23;
+    djacob(1, 0) = sign_y * (- d_shin_z * c1 - shin_z * dc1
+                             - hip_len_y_ * ds1);
+    djacob(1, 1) = sign_y * (d_shin_x * s1 + shin_x * ds1);
+    djacob(1, 2) = sign_y * shin_offset_z_ * (ds1 * s23 + s1 * ds23);
+    djacob(2, 0) = - d_shin_z * s1 - shin_z * ds1 + hip_len_y_ * dc1;
+    djacob(2, 1) = - d_shin_x * c1 - shin_x * dc1;
+    djacob(2, 2) = - shin_offset_z_ * (dc1 * s23 + c1 * ds23);
+
+    return djacob;
+}
+
 Eigen::Matrix3d DogModel::LocalJacob(LegName leg_name) const
 {
     VALID_LEGNAME(leg_name);
@@ -235,37 +340,50 @@ Eigen::Matrix3d DogModel::LocalJacob(LegName leg_name) const
     return jacob;
 }
 
-Eigen::Matrix3d DogModel::ComputeJacobian(
-        LegName leg_name, const Eigen::Vector3d &joint_local_pos) const
+Eigen::Matrix3d DogModel::LocalDJacob(LegName leg_name) const
 {
     VALID_LEGNAME(leg_name);
 
-    const double c1 = cos(joint_local_pos(0));
-    const double s1 = sin(joint_local_pos(0));
-    const double c2 = cos(joint_local_pos(1));
-    const double s2 = sin(joint_local_pos(1));
-    const double c23 = cos(joint_local_pos(1) + joint_local_pos(2));
-    const double s23 = sin(joint_local_pos(1) + joint_local_pos(2));
+    const double c1 = cos(js_.q[leg_name * 3]);
+    const double s1 = sin(js_.q[leg_name * 3]);
+    const double c2 = cos(js_.q[leg_name * 3 + 1]);
+    const double s2 = sin(js_.q[leg_name * 3 + 1]);
+    const double c23 = cos(js_.q[leg_name * 3 + 1] + js_.q[leg_name * 3 + 2]);
+    const double s23 = sin(js_.q[leg_name * 3 + 1] + js_.q[leg_name * 3 + 2]);
+
+    const double v1 = js_.dq[leg_name * 3];
+    const double v2 = js_.dq[leg_name * 3 + 1];
+    const double v23 = js_.dq[leg_name * 3 + 1] + js_.dq[leg_name * 3 + 2];
+
+    const double dc1 = - s1 * v1;
+    const double ds1 = c1 * v1;
+    const double dc23 = - s23 * v23;
+    const double ds23 = c23 * v23;
 
     const double shin_z = thigh_offset_z_ * c2 + shin_offset_z_ * c23;
     const double shin_x = thigh_offset_z_ * s2 + shin_offset_z_ * s23;
+    const double d_shin_z
+            = - thigh_offset_z_ * s2 * v2 + shin_offset_z_ * dc23;
+    const double d_shin_x
+            = thigh_offset_z_ * c2 * v2 + shin_offset_z_ * ds23;
 
     const int sign_x = leg_name < 2      ? 1 : - 1;
     const int sign_y = leg_name % 2 == 0 ? 1 : - 1;
 
-    Eigen::Matrix3d jacob;
+    Eigen::Matrix3d djacob;
 
-    jacob(0, 0) = 0.;
-    jacob(0, 1) = sign_x * shin_z;
-    jacob(0, 2) = sign_x * shin_offset_z_ * c23;
-    jacob(1, 0) = sign_y * (- shin_z * c1 - hip_len_y_ * s1);
-    jacob(1, 1) = sign_y * shin_x * s1;
-    jacob(1, 2) = sign_y * shin_offset_z_ * s1 * s23;
-    jacob(2, 0) = - shin_z * s1 + hip_len_y_ * c1;
-    jacob(2, 1) = - shin_x * c1;
-    jacob(2, 2) = - shin_offset_z_ * c1 * s23;
+    djacob(0, 0) = 0;
+    djacob(0, 1) = sign_x * d_shin_z;
+    djacob(0, 2) = sign_x * shin_offset_z_ * dc23;
+    djacob(1, 0) = sign_y * (- d_shin_z * c1 - shin_z * dc1
+                             - hip_len_y_ * ds1);
+    djacob(1, 1) = sign_y * (d_shin_x * s1 + shin_x * ds1);
+    djacob(1, 2) = sign_y * shin_offset_z_ * (ds1 * s23 + s1 * ds23);
+    djacob(2, 0) = - d_shin_z * s1 - shin_z * ds1 + hip_len_y_ * dc1;
+    djacob(2, 1) = - d_shin_x * c1 - shin_x * dc1;
+    djacob(2, 2) = - shin_offset_z_ * (dc1 * s23 + c1 * ds23);
 
-    return jacob;
+    return djacob;
 }
 
 message::FloatingBaseState DogModel::TorsoState() const
@@ -385,8 +503,7 @@ void DogModel::Update()
 
     FloatingBaseModel::FBJS js_fb;
 
-    message::EstimatorResult res;
-    est->WriteResult(res);
+    message::EstimatorResult res = est->WriteResult();
 
     js_fb.base.rot = res.orientation;
     js_fb.base.trans = res.position;

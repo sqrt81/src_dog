@@ -42,6 +42,12 @@ Eigen::Matrix4d RightQuatToMatrix(const Eigen::Quaterniond &q);
  */
 Eigen::Vector3d QuatToSO3(const Eigen::Quaterniond &quat);
 
+/**
+ * @brief SO3ToQuat
+ * Inverse function of QuatToSO3.
+ */
+Eigen::Quaterniond SO3ToQuat(const Eigen::Vector3d &so3);
+
 } /* physics */
 
 } /* dog_control */

@@ -56,7 +56,7 @@ void SimulatedHardware::Spin()
     ros::spin();
 }
 
-void SimulatedHardware::PublishCommand(MotorCommandCRef command) const
+void SimulatedHardware::PublishCommand(MotorCommandCRef command)
 {
     std_msgs::Float64MultiArray cmd_array;
     cmd_array.data.resize(60);
@@ -110,8 +110,9 @@ void SimulatedHardware::JointStateCb(sensor_msgs::JointStateConstPtr js)
             message::SingleJointState& state
                     = joint_state_.joint_state[iter->second];
 
+            state.vel = (js->position[i] - state.pos) * 1000;
             state.pos = js->position[i];
-            state.vel = js->velocity[i];
+//            state.vel = js->velocity[i];
             state.eff = js->effort[i];
         }
     }

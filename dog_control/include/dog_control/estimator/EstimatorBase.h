@@ -11,13 +11,6 @@
 namespace dog_control
 {
 
-namespace physics
-{
-
-class DogModel;
-
-}
-
 namespace estimator
 {
 
@@ -25,6 +18,7 @@ class EstimatorBase
 {
 protected:
     using EstimatorResult = message::EstimatorResult;
+
 public:
     EstimatorBase() = default;
 
@@ -42,7 +36,10 @@ public:
 
     virtual void Update() = 0;
 
-    virtual void WriteResult(EstimatorResult& result) const = 0;
+    EstimatorResult WriteResult() const
+    {
+        return res_;
+    }
 
 protected:
     boost::weak_ptr<hardware::HardwareBase> hw_ptr_;

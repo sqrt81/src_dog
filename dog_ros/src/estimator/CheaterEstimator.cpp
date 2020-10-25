@@ -27,11 +27,6 @@ void CheaterEstimator::Update()
 
 }
 
-void CheaterEstimator::WriteResult(EstimatorResult &result) const
-{
-    result = res_;
-}
-
 void CheaterEstimator::CheatedMsgSub(const gazebo_msgs::ModelStates &msg)
 {
     for (size_t i = 0; i < msg.name.size(); i++)

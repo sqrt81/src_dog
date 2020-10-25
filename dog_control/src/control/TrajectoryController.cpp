@@ -183,6 +183,8 @@ void TrajectoryController::GetCurLocalFootState(
         pos = cur_state.rot.conjugate()
                 * (foot_pos_[foot_name] - cur_state.trans);
         vel = - cur_state.linear_vel;
+
+        CHECK(!cur_state.rot.coeffs().hasNaN());
     }
     else
     {

@@ -1,10 +1,11 @@
 #include "dog_control/physics/DogModel.h"
-#include "dog_ros/hardware/SimulatedHardware.h"
-#include "dog_ros/estimator/CheaterEstimator.h"
 #include "dog_control/control/TrajectoryController.h"
 #include "dog_control/control/WholeBodyController.h"
 #include "dog_control/control/FootPosController.h"
 #include "dog_control/control/ModelPredictiveController.h"
+#include "dog_ros/hardware/SimulatedHardware.h"
+#include "dog_ros/estimator/CheaterEstimator.h"
+#include "dog_control/estimator/EKFEstimator.h"
 #include "dog_control/utils/Initializer.h"
 #include "dog_control/utils/Math.h"
 #include "dog_control/utils/MiniLog.h"
@@ -33,6 +34,8 @@ int main(int argc, char** argv)
                 new hardware::SimulatedHardware());
     boost::shared_ptr<estimator::EstimatorBase> estimator(
                 new estimator::CheaterEstimator());
+    boost::shared_ptr<estimator::EstimatorBase> ekf(
+                new estimator::EKFEstimator());
     boost::shared_ptr<control::FootPosController> foot_ctrl(
                 new control::FootPosController());
     boost::shared_ptr<control::WholeBodyController> wbc(
@@ -48,6 +51,7 @@ int main(int argc, char** argv)
     wbc->Initialize(dict);
     mpc->Initialize(dict);
     traj->Initialize(dict);
+    ekf->Initialize(dict);
 
     foot_ctrl->SetPipelineData(cmd);
     wbc->SetPipelineData(cmd);
@@ -56,6 +60,8 @@ int main(int argc, char** argv)
     model->ConnectEstimator(estimator);
     estimator->ConnectHardware(hw);
     estimator->ConnectModel(model);
+    ekf->ConnectModel(model);
+    ekf->ConnectHardware(hw);
     foot_ctrl->ConnectModel(model);
     foot_ctrl->ConnectTraj(traj);
     mpc->ConnectModel(model);
@@ -77,6 +83,7 @@ int main(int argc, char** argv)
 
     clock->Update();
     estimator->Update();
+    ekf->Update();
     model->Update();
     foot_ctrl->Update();
     traj->Update();
@@ -93,7 +100,7 @@ int main(int argc, char** argv)
         foot_ctrl->ChangeFootControlMethod(conf);
     }
 
-    const double angle = M_PI_2;
+    const double angle = 0;
     int iter = 0;
 
     {
@@ -122,7 +129,7 @@ int main(int argc, char** argv)
 
         state.stamp = clock->Time() + 0.5;
         state.state.trans = {0, 0, 0.25};
-        state.state.rot = Eigen::AngleAxisd(M_PI_2, Eigen::Vector3d::UnitX());
+        state.state.rot = Eigen::AngleAxisd(angle, Eigen::Vector3d::UnitX());
         state.state.linear_vel = Eigen::Vector3d::Zero();
         state.state.rot_vel = {0, 0, 0};
         torso_traj.push_back(state);
@@ -146,16 +153,20 @@ int main(int argc, char** argv)
         clock->Update();
         traj->Update();
         estimator->Update();
+        ekf->Update();
         model->Update();
         foot_ctrl->Update();
         mpc->Update();
         wbc->Update();
         hw->PublishCommand(*cmd);
 
+//        auto res = ekf->WriteResult();
+//        LOG(INFO) << "estimated pos " << res.position.transpose();
+
         r.sleep();
     }
 
-    constexpr double len = 0.1;
+    constexpr double len = 0.;
     constexpr int duration = 400;
 //    constexpr double t = duration / 1000.;
 
@@ -201,21 +212,20 @@ int main(int argc, char** argv)
             traj->SetTorsoTrajectory(torso_traj);
         }
 
-        Eigen::AngleAxisd rot = rot_base;
-        rot = rot * Eigen::AngleAxisd(
-                    len * sin(iter * 2 * M_PI / duration),
-                    Eigen::Vector3d::UnitZ());
-
         ros::spinOnce();
 
         clock->Update();
         traj->Update();
         estimator->Update();
+        ekf->Update();
         model->Update();
         foot_ctrl->Update();
         mpc->Update();
         wbc->Update();
         hw->PublishCommand(*cmd);
+
+//        auto res = ekf->WriteResult();
+//        LOG(INFO) << "estimated pos " << res.position.transpose();
 
         r.sleep();
     }

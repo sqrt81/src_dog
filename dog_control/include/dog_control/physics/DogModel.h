@@ -32,6 +32,16 @@ public:
     void ConnectEstimator(boost::shared_ptr<estimator::EstimatorBase> est);
 
     /**
+     * @brief ComputeLocalPos
+     * Compute foot local position according to given joint positions
+     * @param leg_name          the leg to compute
+     * @param joint_pos         joint positions
+     * @return
+     */
+    Eigen::Vector3d ComputeLocalPos(
+            LegName leg_name, const Eigen::Vector3d &joint_pos) const;
+
+    /**
      * @brief InverseKinematics
      * Computes desired joint positions of leg joints to achieve
      * the target foot position (in local frame).
@@ -42,8 +52,15 @@ public:
      * @return                  desired joint position
      */
     Eigen::Vector3d InverseKinematics(LegName leg_name,
-                           const Eigen::Vector3d &foot_local_pos,
-                           bool knee_out, bool hip_out) const;
+                                      const Eigen::Vector3d &foot_local_pos,
+                                      bool knee_out, bool hip_out) const;
+
+    Eigen::Matrix3d ComputeJacobian(
+            LegName leg_name, const Eigen::Vector3d &joint_pos) const;
+
+    Eigen::Matrix3d ComputeDJacobian(
+            LegName leg_name, const Eigen::Vector3d &joint_pos,
+            const Eigen::Vector3d &joint_vel) const;
 
     /**
      * @brief LocalJacob
@@ -53,8 +70,7 @@ public:
      */
     Eigen::Matrix3d LocalJacob(LegName leg_name) const;
 
-    Eigen::Matrix3d ComputeJacobian(
-            LegName leg_name, const Eigen::Vector3d &joint_local_pos) const;
+    Eigen::Matrix3d LocalDJacob(LegName leg_name) const;
 
 //    using spatial::FloatingBaseModel::SetJointMotionState;
     using spatial::FloatingBaseModel::ForwardKinematics;

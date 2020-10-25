@@ -59,6 +59,25 @@ Eigen::Vector3d QuatToSO3(const Eigen::Quaterniond &quat)
     return so3;
 }
 
+Eigen::Quaterniond SO3ToQuat(const Eigen::Vector3d &so3)
+{
+    Eigen::Quaterniond quat;
+    const double norm = so3.norm() / 2;
+    Eigen::Vector3d unit;
+
+    if (abs(norm) > 1e-6)
+    {
+        unit = so3 / norm * 2;
+
+        quat.w() = cos(norm);
+        quat.vec() = unit * sin(norm);
+    }
+    else
+        quat.setIdentity();
+
+    return quat;
+}
+
 } /* physics */
 
 } /* dog_control */

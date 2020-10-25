@@ -33,7 +33,7 @@ public:
 
     void Spin();
 
-    void PublishCommand(MotorCommandCRef command) const;
+    void PublishCommand(MotorCommandCRef command);
 
 private:
     void ImuCb(sensor_msgs::ImuConstPtr imu);
