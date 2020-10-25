@@ -102,7 +102,7 @@ inline void Queue<T>::EraseHead(int n_erase)
 
     q_sz_ -= n_erase;
 
-    if (static_cast<signed>(base_.size()) - beg_ >= n_erase)
+    if (static_cast<signed>(base_.size()) - beg_ > n_erase)
     {
         std::_Destroy(M_storage_ + beg_, M_storage_ + beg_ + n_erase);
         beg_ += n_erase;
