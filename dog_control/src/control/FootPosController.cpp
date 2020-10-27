@@ -21,8 +21,6 @@ FootPosController::FootPosController()
         real_footstate_[i].foot_name = static_cast<message::LegName>(i);
         config_[i].foot_name = static_cast<message::LegName>(i);
     }
-
-    cmd_forces_.setZero();
 }
 
 void FootPosController::Initialize(utils::ParamDictCRef dict)
@@ -61,11 +59,6 @@ void FootPosController::SetFootStateCmd(FootStateCRef foot_state)
     CHECK(VALID_LEGNAME(foot_state.foot_name));
 
     cmd_footstate_[foot_state.foot_name] = foot_state;
-}
-
-void FootPosController::SetJointForceCmd(const JointForces &joint_forces)
-{
-    cmd_forces_ = joint_forces;
 }
 
 message::FootState FootPosController::GetFootState(
@@ -136,10 +129,6 @@ void FootPosController::Update()
         offset_cmd[0].kd = config.kd;
         offset_cmd[1].kd = config.kd;
         offset_cmd[2].kd = config.kd;
-
-        offset_cmd[0].torq = cmd_forces_(i * 3    );
-        offset_cmd[1].torq = cmd_forces_(i * 3 + 1);
-        offset_cmd[2].torq = cmd_forces_(i * 3 + 2);
     }
 }
 

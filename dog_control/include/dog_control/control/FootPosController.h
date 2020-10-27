@@ -51,8 +51,6 @@ public:
 
     void SetFootStateCmd(FootStateCRef foot_state);
 
-    void SetJointForceCmd(const JointForces& joint_forces);
-
     FootState GetFootState(message::LegName foot_name) const;
 
     void Update();
@@ -64,7 +62,6 @@ private:
     boost::shared_ptr<message::MotorCommand> cmd_;
 
     std::array<FootState, 4> cmd_footstate_;
-    JointForces cmd_forces_;
     std::array<FootState, 4> real_footstate_;
 
     std::array<LegConfiguration, 4> config_;
