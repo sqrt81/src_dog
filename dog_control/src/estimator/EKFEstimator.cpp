@@ -349,21 +349,49 @@ void EKFEstimator::Update()
     res_.rot_vel = imu.imu_data.angular_speed - Xk_.segment<3>(24);
     res_.linear_acc = imu.imu_data.acceleration - Xk_.segment<3>(21)
             + res_.orientation.conjugate() * gravity_;
+}
 
-    static int cnt = 0;
+void EKFEstimator::ResetTransform(const Eigen::Vector3d &trans,
+                                  const Eigen::Quaterniond &rot)
+{
+    const Eigen::Quaterniond R = rot * res_.orientation.conjugate();
 
-    if (cnt < 2)
+    Xk_.segment<3>(0) = trans;
+    Xk_.segment<3>(3) = R * Xk_.segment<3>(3);
+    Xk_.segment<3>(9) = trans + R * (Xk_.segment<3>(9) - res_.position);
+    Xk_.segment<3>(12) = trans + R * (Xk_.segment<3>(12) - res_.position);
+    Xk_.segment<3>(15) = trans + R * (Xk_.segment<3>(15) - res_.position);
+    Xk_.segment<3>(18) = trans + R * (Xk_.segment<3>(18) - res_.position);
+
+    // apply transformation matrix R to variance Pk_
+    // and get R * Pk_ * R.transpose
+    const Eigen::Matrix3d rot_mat = R.toRotationMatrix();
+    Pk_.middleRows<3>(3).applyOnTheLeft(rot_mat);
+
+    for (int i = 0; i < 4; i++)
     {
-        cnt++;
-
-//        LOG(INFO) << "Xk: " << std::endl << Xk_.segment<6>(12).transpose();
-//        LOG(INFO) << "Yk: " << std::endl << Yk_.segment<6>(0).transpose();
-//        LOG(INFO) << "ft: " << std::endl << foot_local_pos[0].transpose()
-//                  << "\t " << foot_local_pos[1].transpose();
+        Pk_.middleRows<3>(9 + i * 3)
+                = rot_mat
+                * (Pk_.middleRows<3>(9 + i * 3) - Pk_.topRows<3>());
     }
 
-    LOG(INFO) << "ori: " << res_.orientation.coeffs().transpose();
-//    LOG(INFO) << "Kk: " << (Kk_ * Yk_).segment<6>(12).transpose();
+    Pk_.topRows<3>().setZero();
+    Pk_.middleRows<3>(6).setZero();
+
+    Pk_.middleCols<3>(3).applyOnTheRight(rot_mat.transpose());
+
+    for (int i = 0; i < 4; i++)
+    {
+        Pk_.middleCols<3>(9 + i * 3)
+                = (Pk_.middleCols<3>(9 + i * 3) - Pk_.leftCols<3>())
+                * rot_mat.transpose();
+    }
+
+    Pk_.leftCols<3>().setZero();
+    Pk_.middleCols<3>(6).setZero();
+
+    res_.position = trans;
+    res_.orientation = rot;
 }
 
 } /* estimator */

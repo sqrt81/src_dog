@@ -9,6 +9,18 @@ namespace dog_control
 namespace estimator
 {
 
+/**
+ * @brief The EKFEstimator class
+ * Estimator based on extended Kalman filter, written according
+ * to the approach described in
+ * State Estimation for Legged Robots
+ *  - Consistent Fusion of Leg Kinematics and IMU.
+ *
+ * This method takes imu acceleration and rotation velocity as input,
+ * and corrects the estimation result with contact foot states.
+ * Here I've made a modification so that the contact foots' velocity
+ * are also used for correction.
+ */
 class EKFEstimator : public EstimatorBase
 {
 public:
@@ -17,6 +29,15 @@ public:
     void Initialize(utils::ParamDictCRef dict) override;
 
     void Update() override;
+
+    /**
+     * @brief ResetTransform
+     * Reset torso pose to the specific value.
+     * @param trans             torso's global translation
+     * @param rot               torso's global rotation
+     */
+    void ResetTransform(const Eigen::Vector3d &trans,
+                        const Eigen::Quaterniond &rot);
 
 private:
     double dt_;
