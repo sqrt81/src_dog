@@ -10,6 +10,7 @@
 #include "dog_control/utils/Math.h"
 #include "dog_control/utils/MiniLog.h"
 #include "dog_control/physics/EigenToolbox.h"
+#include "dog_ros/visualization/RvizVisualization.h"
 
 #include <ros/ros.h>
 
@@ -18,6 +19,10 @@ using namespace dog_control;
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "~");
+    visualization::RvizVisualization vis;
+    message::VisualData vis_data;
+    vis.SetData(vis_data);
+
     std::string config_file;
     ros::param::get("~config_file", config_file);
 
@@ -32,8 +37,8 @@ int main(int argc, char** argv)
                 new hardware::SimulatedClock());
     boost::shared_ptr<hardware::HardwareBase> hw(
                 new hardware::SimulatedHardware());
-    boost::shared_ptr<estimator::EstimatorBase> estimator(
-                new estimator::CheaterEstimator());
+//    boost::shared_ptr<estimator::EstimatorBase> estimator(
+//                new estimator::CheaterEstimator());
     boost::shared_ptr<estimator::EstimatorBase> ekf(
                 new estimator::EKFEstimator());
     boost::shared_ptr<control::FootPosController> foot_ctrl(
@@ -57,9 +62,10 @@ int main(int argc, char** argv)
     wbc->SetPipelineData(cmd);
 
     model->ConnectHardware(hw);
-    model->ConnectEstimator(estimator);
-    estimator->ConnectHardware(hw);
-    estimator->ConnectModel(model);
+//    model->ConnectEstimator(estimator);
+    model->ConnectEstimator(ekf);
+//    estimator->ConnectHardware(hw);
+//    estimator->ConnectModel(model);
     ekf->ConnectModel(model);
     ekf->ConnectHardware(hw);
     foot_ctrl->ConnectModel(model);
@@ -74,6 +80,9 @@ int main(int argc, char** argv)
     traj->ConnectClock(clock);
     traj->ConnectModel(model);
 
+    estimator::EKFEstimator* est
+            = reinterpret_cast<estimator::EKFEstimator*>(ekf.get());
+
     // spin to update hardware and time
     for (int i = 0; i < 10; i++)
     {
@@ -82,11 +91,14 @@ int main(int argc, char** argv)
     }
 
     clock->Update();
-    estimator->Update();
+//    estimator->Update();
     ekf->Update();
+    est->ResetTransform(Eigen::Vector3d(0.0, 0.0, 0.4),
+                        Eigen::Quaterniond::Identity());
     model->Update();
     foot_ctrl->Update();
     traj->Update();
+
 
     message::LegConfiguration conf;
     conf.hip_outwards = true;
@@ -100,7 +112,7 @@ int main(int argc, char** argv)
         foot_ctrl->ChangeFootControlMethod(conf);
     }
 
-    const double angle = 0;
+    const double angle = M_PI_2;
     int iter = 0;
 
     {
@@ -152,7 +164,7 @@ int main(int argc, char** argv)
 
         clock->Update();
         traj->Update();
-        estimator->Update();
+//        estimator->Update();
         ekf->Update();
         model->Update();
         foot_ctrl->Update();
@@ -160,13 +172,44 @@ int main(int argc, char** argv)
         wbc->Update();
         hw->PublishCommand(*cmd);
 
-//        auto res = ekf->WriteResult();
+        // update visualization data
+        if (i % 10 == 0)
+        {
+            auto est = ekf->GetResult();
+            vis_data.cur_pose.rot = est.orientation;
+            vis_data.cur_pose.trans = est.position;
+            vis_data.cur_pose.linear_vel = est.linear_vel;
+            vis_data.cur_pose.rot_vel = est.rot_vel;
+
+            traj->SampleTrajFromNow(4, 0.1, vis_data.torso_traj);
+            Eigen::Vector3d pos;
+
+            for (int j = 0; j < 4; j++)
+            {
+                pos = model->FootPos(message::LegName(j));
+                vis_data.foot_local_pos[j]
+                        = vis_data.cur_pose.rot.conjugate()
+                        * (pos - vis_data.cur_pose.trans);
+            }
+
+            std::array<Eigen::Vector3d, 4> force;
+            std::array<bool, 4> contact;
+            mpc->GetFeetForce(clock->Time(), force, contact);
+
+            for (int j = 0; j < 4; j++)
+                vis_data.foot_force[j]
+                        = vis_data.cur_pose.rot.conjugate() * force[j];
+
+            vis.Update();
+        }
+
+//        auto res = ekf->GetResult();
 //        LOG(INFO) << "estimated pos " << res.position.transpose();
 
         r.sleep();
     }
 
-    constexpr double len = 0.;
+    constexpr double len = 0.1;
     constexpr int duration = 400;
 //    constexpr double t = duration / 1000.;
 
@@ -216,7 +259,7 @@ int main(int argc, char** argv)
 
         clock->Update();
         traj->Update();
-        estimator->Update();
+//        estimator->Update();
         ekf->Update();
         model->Update();
         foot_ctrl->Update();
@@ -224,7 +267,38 @@ int main(int argc, char** argv)
         wbc->Update();
         hw->PublishCommand(*cmd);
 
-//        auto res = ekf->WriteResult();
+        // update visualization data
+        if (iter % 10 == 0)
+        {
+            auto est = ekf->GetResult();
+            vis_data.cur_pose.rot = est.orientation;
+            vis_data.cur_pose.trans = est.position;
+            vis_data.cur_pose.linear_vel = est.linear_vel;
+            vis_data.cur_pose.rot_vel = est.rot_vel;
+
+            traj->SampleTrajFromNow(4, 0.1, vis_data.torso_traj);
+            Eigen::Vector3d pos;
+
+            for (int j = 0; j < 4; j++)
+            {
+                pos = model->FootPos(message::LegName(j));
+                vis_data.foot_local_pos[j]
+                        = vis_data.cur_pose.rot.conjugate()
+                        * (pos - vis_data.cur_pose.trans);
+            }
+
+            std::array<Eigen::Vector3d, 4> force;
+            std::array<bool, 4> contact;
+            mpc->GetFeetForce(clock->Time(), force, contact);
+
+            for (int j = 0; j < 4; j++)
+                vis_data.foot_force[j]
+                        = vis_data.cur_pose.rot.conjugate() * force[j];
+
+            vis.Update();
+        }
+
+//        auto res = ekf->GetResult();
 //        LOG(INFO) << "estimated pos " << res.position.transpose();
 
         r.sleep();

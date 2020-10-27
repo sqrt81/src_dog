@@ -503,7 +503,7 @@ void DogModel::Update()
 
     FloatingBaseModel::FBJS js_fb;
 
-    message::EstimatorResult res = est->WriteResult();
+    message::EstimatorResult res = est->GetResult();
 
     js_fb.base.rot = res.orientation;
     js_fb.base.trans = res.position;

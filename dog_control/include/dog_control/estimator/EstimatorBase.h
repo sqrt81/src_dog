@@ -36,7 +36,7 @@ public:
 
     virtual void Update() = 0;
 
-    EstimatorResult WriteResult() const
+    EstimatorResult GetResult() const
     {
         return res_;
     }

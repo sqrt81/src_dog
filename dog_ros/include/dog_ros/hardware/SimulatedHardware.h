@@ -1,5 +1,5 @@
-#ifndef DOG_CONTROL_HARDWARE_SIMULATEDHARDWARE
-#define DOG_CONTROL_HARDWARE_SIMULATEDHARDWARE
+#ifndef DOG_ROS_HARDWARE_SIMULATEDHARDWARE
+#define DOG_ROS_HARDWARE_SIMULATEDHARDWARE
 
 #include "dog_control/hardware/HardwareBase.h"
 #include "dog_control/hardware/ClockBase.h"
@@ -59,4 +59,4 @@ public:
 
 } /* dog_control */
 
-#endif /* DOG_CONTROL_HARDWARE_SIMULATEDHARDWARE */
+#endif /* DOG_ROS_HARDWARE_SIMULATEDHARDWARE */

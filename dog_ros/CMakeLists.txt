@@ -10,6 +10,7 @@ project(dog_ros)
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   eigen_conversions
+  tf2_ros
   roscpp
   gazebo_msgs
 )
