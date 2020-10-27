@@ -77,6 +77,7 @@ void SimulatedHardware::ImuCb(sensor_msgs::ImuConstPtr imu)
 {
     imu_info_.stamp = imu->header.stamp.toSec();
     tf::quaternionMsgToEigen(imu->orientation, imu_info_.imu_data.rotation);
+    imu_info_.imu_data.rotation.normalize();
     tf::vectorMsgToEigen(imu->angular_velocity,
                          imu_info_.imu_data.angular_speed);
     tf::vectorMsgToEigen(imu->linear_acceleration,
@@ -116,6 +117,7 @@ void SimulatedHardware::JointStateCb(sensor_msgs::JointStateConstPtr js)
             state.eff = js->effort[i];
         }
     }
+
 }
 
 } /* hardware */

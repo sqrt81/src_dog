@@ -58,7 +58,7 @@
         <topicName>/dog/imu</topicName>
         <bodyName>torso</bodyName>
         <updateRateHZ>500</updateRateHZ>
-        <gaussianNoise>0.01</gaussianNoise>
+        <gaussianNoise>0.1</gaussianNoise>
         <xyzOffset>0 0 0</xyzOffset>
         <rpyOffset>0 0 0</rpyOffset>
         <frameName>torso</frameName>

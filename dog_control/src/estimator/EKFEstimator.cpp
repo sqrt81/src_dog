@@ -147,7 +147,7 @@ void EKFEstimator::Initialize(utils::ParamDictCRef dict)
                 ReadParOrDie(dict, PARAM_WITH_NS(gravity_y, physics)),
                 ReadParOrDie(dict, PARAM_WITH_NS(gravity_z, physics)));
 
-    Ak_ = Eigen::MatrixXd::Zero(n_var, n_var);
+    Ak_ = Eigen::MatrixXd::Identity(n_var, n_var);
     Pk_ = Eigen::MatrixXd::Zero(n_var, n_var);
     Xk_ = Eigen::VectorXd::Zero(n_var);
     Sk_ = Eigen::MatrixXd::Zero(n_foot * 2, n_foot * 2);
@@ -158,7 +158,6 @@ void EKFEstimator::Initialize(utils::ParamDictCRef dict)
     Qk_ = Eigen::MatrixXd::Zero(n_foot * 2, n_foot * 2);
     Var_ = Eigen::VectorXd::Zero(n_var);
 
-    Ak_.diagonal().setIdentity();
     Ak_.block<3, 3>(0, 3).diagonal().setConstant(dt_);
 
     const double dt_2 = (1. / 2.) * utils::square(dt_);
@@ -177,6 +176,10 @@ void EKFEstimator::Initialize(utils::ParamDictCRef dict)
     res_.orientation.setIdentity();
     res_.linear_vel.setZero();
     res_.rot_vel.setZero();
+
+    // Init variance for foot with a large value since
+    // we do not know their place at first
+    Pk_.diagonal().segment<n_foot>(9).setConstant(var_pi_ * 1e6);
 }
 
 void EKFEstimator::Update()
@@ -294,7 +297,7 @@ void EKFEstimator::Update()
                 = - wk * Hk_.block<3, 3>(i * 3, 6) - Ck_vk;
         Hk_.block<3, 3>(i * 3,          i * 3 + 9) = Ck.transpose();
         Hk_.block<3, 3>(i * 3 + n_foot, i * 3 + 9) = - wk_Ck;
-        Hk_.block<3, 3>(i * 3 + n_foot, 24) = Hk_.block<3, 3>(i * 3, 6);
+        Hk_.block<3, 3>(i * 3 + n_foot, 24) = - Hk_.block<3, 3>(i * 3, 6);
     }
 
     // Step 5: Compute state and observation covariance matrix.
@@ -329,10 +332,10 @@ void EKFEstimator::Update()
     Qk_.diagonal().head<n_foot>().array() += var_s_;
     Qk_.diagonal().tail<n_foot>().array() += var_vs_;
 
-    Sk_ = Hk_ * Pk_ * Hk_.transpose() + Qk_;
+    Sk_.noalias() = Hk_ * Pk_ * Hk_.transpose() + Qk_;
 
     // Step 6: Run Kalman filter.
-    Kk_ = Pk_ * Hk_.transpose() * Sk_.inverse();
+    Kk_.noalias() = Pk_ * Hk_.transpose() * Sk_.inverse();
     Xk_ += Kk_ * Yk_;
     Rk_.noalias() = - Kk_ * Hk_;
     Rk_.diagonal().array() += 1.;
@@ -347,19 +350,20 @@ void EKFEstimator::Update()
     res_.linear_acc = imu.imu_data.acceleration - Xk_.segment<3>(21)
             + res_.orientation.conjugate() * gravity_;
 
-    static bool once = true;
+    static int cnt = 0;
 
-    if (once)
+    if (cnt < 2)
     {
-        once = false;
+        cnt++;
+
+//        LOG(INFO) << "Xk: " << std::endl << Xk_.segment<6>(12).transpose();
+//        LOG(INFO) << "Yk: " << std::endl << Yk_.segment<6>(0).transpose();
+//        LOG(INFO) << "ft: " << std::endl << foot_local_pos[0].transpose()
+//                  << "\t " << foot_local_pos[1].transpose();
     }
 
-    LOG(INFO) << "Xk: " << std::endl << Xk_.segment<3>(6).transpose();
-    LOG(INFO) << "Yk: " << std::endl << Yk_.segment<6>(0).transpose();
-    LOG(INFO) << "ft: " << std::endl << foot_local_pos[0].transpose()
-              << "\t " << foot_local_pos[1].transpose();
-    LOG(INFO) << "rot: " << res_.orientation.coeffs().transpose();
-
+    LOG(INFO) << "ori: " << res_.orientation.coeffs().transpose();
+//    LOG(INFO) << "Kk: " << (Kk_ * Yk_).segment<6>(12).transpose();
 }
 
 } /* estimator */

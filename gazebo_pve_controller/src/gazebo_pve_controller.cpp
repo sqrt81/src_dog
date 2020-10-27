@@ -141,6 +141,7 @@ void GazeboPVEController::update(const ros::Time &time,
         const double motor_limit = joint_torque_limit_[i];
 
         const double actual_pos = motor.getPosition();
+//        const double actual_vel = (actual_pos - motor_state.pos) / period.toSec();
         const double actual_vel = motor.getVelocity();
 
         const double pos_err = motor_cmd.x_desired - actual_pos;

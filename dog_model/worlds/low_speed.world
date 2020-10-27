@@ -23,7 +23,9 @@
           <cfm>0</cfm>
           <erp>0.2</erp>
           <contact_max_correcting_vel>0</contact_max_correcting_vel>
-          <contact_surface_layer>0</contact_surface_layer>
+          <contact_surface_layer>0.0005</contact_surface_layer>
+          <!--<split_impulse>1</split_impulse>-->
+          <!--<split_impulse_penetration_threshold>-0.01</split_impulse_penetration_threshold>-->
         </constraints>
       </ode>
     </physics>
