@@ -1,5 +1,7 @@
 ESTIMATOR = {
   EKF = {
+    decay = 0.02,
+    
     var_a = 0.01,
     var_w = 0.01,
     var_ba = 0.01,

@@ -71,9 +71,10 @@ private:
     if (expr) \
         ; \
     else \
-        LOG(FATAL) << "Check failed in " \
-        __FILE__ << " in function " << __func__ \
-        << " at line " << __LINE__ << ": "
+        LOG(FATAL) \
+        << "Check failed in " << __FILE__ \
+        << " at line " << __LINE__ \
+        << ": in function " << __func__ << ": "
 
 inline double ReadParOrDie(utils::ParamDictCRef dict,
                            const std::string &param)

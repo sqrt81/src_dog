@@ -86,7 +86,8 @@ void SimulatedHardware::ImuCb(sensor_msgs::ImuConstPtr imu)
 
 void SimulatedHardware::JointStateCb(sensor_msgs::JointStateConstPtr js)
 {
-    joint_state_.stamp = js->header.stamp.toSec();
+    const double dt = js->header.stamp.toSec() - joint_state_.stamp;
+    joint_state_.stamp += dt;
 
     if (js->name.size() != 12
             || js->position.size() != 12
@@ -111,7 +112,7 @@ void SimulatedHardware::JointStateCb(sensor_msgs::JointStateConstPtr js)
             message::SingleJointState& state
                     = joint_state_.joint_state[iter->second];
 
-            state.vel = (js->position[i] - state.pos) * 1000;
+            state.vel = (js->position[i] - state.pos) / dt;
             state.pos = js->position[i];
 //            state.vel = js->velocity[i];
             state.eff = js->effort[i];

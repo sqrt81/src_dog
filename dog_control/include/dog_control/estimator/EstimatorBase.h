@@ -4,6 +4,7 @@
 #include "dog_control/utils/ClassDeclare.h"
 
 #include "dog_control/message/EstimatorResult.h"
+#include "dog_control/message/MotorCommand.h"
 #include "dog_control/utils/ParamDict.h"
 
 #include <boost/weak_ptr.hpp>
@@ -23,6 +24,11 @@ public:
     EstimatorBase() = default;
 
     virtual void Initialize(utils::ParamDictCRef dict) = 0;
+
+    void SetCommandData(boost::shared_ptr<message::MotorCommand> cmd)
+    {
+        cmd_ = cmd;
+    }
 
     void ConnectHardware(boost::shared_ptr<hardware::HardwareBase> hw)
     {
@@ -44,6 +50,8 @@ public:
 protected:
     boost::weak_ptr<hardware::HardwareBase> hw_ptr_;
     boost::weak_ptr<physics::DogModel> model_ptr_;
+
+    boost::shared_ptr<const message::MotorCommand> cmd_;
 
     EstimatorResult res_;
 };

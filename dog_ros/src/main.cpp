@@ -60,6 +60,7 @@ int main(int argc, char** argv)
 
     foot_ctrl->SetPipelineData(cmd);
     wbc->SetPipelineData(cmd);
+    ekf->SetCommandData(cmd);
 
     model->ConnectHardware(hw);
 //    model->ConnectEstimator(estimator);
@@ -92,6 +93,7 @@ int main(int argc, char** argv)
 
     clock->Update();
 //    estimator->Update();
+    model->Update();
     ekf->Update();
     est->ResetTransform(Eigen::Vector3d(0.0, 0.0, 0.4),
                         Eigen::Quaterniond::Identity());
@@ -192,13 +194,14 @@ int main(int argc, char** argv)
                         * (pos - vis_data.cur_pose.trans);
             }
 
-            std::array<Eigen::Vector3d, 4> force;
-            std::array<bool, 4> contact;
-            mpc->GetFeetForce(clock->Time(), force, contact);
+//            std::array<Eigen::Vector3d, 4> force;
+//            std::array<bool, 4> contact;
+//            mpc->GetFeetForce(clock->Time(), force, contact);
 
-            for (int j = 0; j < 4; j++)
-                vis_data.foot_force[j]
-                        = vis_data.cur_pose.rot.conjugate() * force[j];
+//            for (int j = 0; j < 4; j++)
+//                vis_data.foot_force[j]
+//                        = vis_data.cur_pose.rot.conjugate() * force[j];
+            vis_data.foot_force = ekf->GetResult().foot_force;
 
             vis.Update();
         }
@@ -287,13 +290,14 @@ int main(int argc, char** argv)
                         * (pos - vis_data.cur_pose.trans);
             }
 
-            std::array<Eigen::Vector3d, 4> force;
-            std::array<bool, 4> contact;
-            mpc->GetFeetForce(clock->Time(), force, contact);
+//            std::array<Eigen::Vector3d, 4> force;
+//            std::array<bool, 4> contact;
+//            mpc->GetFeetForce(clock->Time(), force, contact);
 
-            for (int j = 0; j < 4; j++)
-                vis_data.foot_force[j]
-                        = vis_data.cur_pose.rot.conjugate() * force[j];
+//            for (int j = 0; j < 4; j++)
+//                vis_data.foot_force[j]
+//                        = vis_data.cur_pose.rot.conjugate() * force[j];
+            vis_data.foot_force = ekf->GetResult().foot_force;
 
             vis.Update();
         }

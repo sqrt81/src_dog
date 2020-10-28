@@ -16,6 +16,7 @@ namespace
 {
 
 constexpr int n_foot = 3 * 4;
+constexpr int n_j = 12;
 
 // number of states:
 // 3 position, 3 velocity, 3 rotation,
@@ -131,6 +132,7 @@ private:
 void EKFEstimator::Initialize(utils::ParamDictCRef dict)
 {
     dt_ = ReadParOrDie(dict, PARAM_WITH_NS(control_period, control));
+    filter_decay_ = ReadParOrDie(dict, PARAM_WITH_NS(decay, estimator/EKF));
 
     var_a_ = ReadParOrDie(dict, PARAM_WITH_NS(var_a, estimator/EKF));
     var_w_ = ReadParOrDie(dict, PARAM_WITH_NS(var_w, estimator/EKF));
@@ -177,6 +179,10 @@ void EKFEstimator::Initialize(utils::ParamDictCRef dict)
     res_.linear_vel.setZero();
     res_.rot_vel.setZero();
 
+    torq_ = Eigen::VectorXd::Zero(n_j);
+    vj_ = Eigen::VectorXd::Zero(6 + n_j);
+    dvj_ = Eigen::VectorXd::Zero(6 + n_j);
+
     // Init variance for foot with a large value since
     // we do not know their place at first
     Pk_.diagonal().segment<n_foot>(9).setConstant(var_pi_ * 1e6);
@@ -184,12 +190,14 @@ void EKFEstimator::Initialize(utils::ParamDictCRef dict)
 
 void EKFEstimator::Update()
 {
-    // Step 1: Obtain sensor data
+    // Obtain sensor data
     boost::shared_ptr<hardware::HardwareBase> hw = hw_ptr_.lock();
     CHECK(hw) << "[EKFEstimator] hardware is not connected!";
 
     boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
     CHECK(model) << "[EKFEstimator] model is not connected!";
+
+    CHECK(cmd_) << "[EKFEstimator] command is not set!";
 
     message::StampedImu imu = hw->GetImuData();
     message::StampedJointState js = hw->GetJointState();
@@ -198,6 +206,7 @@ void EKFEstimator::Update()
     Eigen::Vector3d ft_vel[4];
     Eigen::Matrix3d jacob[4];
     Eigen::Matrix3d djacob[4];
+    Eigen::Matrix<double, n_j, 1> cur_torq;
 
     for (int i = 0; i < 4; i++)
     {
@@ -217,8 +226,36 @@ void EKFEstimator::Update()
         djacob[i] = model->ComputeDJacobian(static_cast<message::LegName>(i),
                                            joint_pos, joint_vel);
         ft_vel[i] = jacob[i] * joint_vel;
+        dvj_.segment<3>(6 + i * 3)
+                = (joint_vel - vj_.segment<3>(6 + i * 3));
+        cur_torq(i * 3    ) = - (*cmd_)[i * 3    ].torq;
+        cur_torq(i * 3 + 1) = - (*cmd_)[i * 3 + 1].torq;
+        cur_torq(i * 3 + 2) = - (*cmd_)[i * 3 + 2].torq;
     }
 
+    /* ------------Estimate foot force---------------- */
+    const Eigen::MatrixXd mass_matrix = model->MassMatrix();
+    cur_torq += mass_matrix.bottomRows<n_j>() * (dvj_ / dt_)
+             + model->BiasForces().tail<n_j>()
+             - model->Friction();
+
+    torq_ = torq_ * (1. - filter_decay_) + cur_torq * filter_decay_;
+    vj_.tail<n_j>() += dvj_.tail<n_j>();
+
+    for (int i = 0; i < 4; i++)
+    {
+        // torq_ext = J.transpose * F_ext
+        Eigen::Matrix3d inv_j;
+        bool invertable;
+        jacob[i].computeInverseWithCheck(inv_j, invertable);
+
+        if (invertable)
+            res_.foot_force[i] = inv_j.transpose() * torq_.segment<3>(i * 3);
+        else
+            res_.foot_force[i].setZero();
+    }
+
+    /* ------------Estimate robot state--------------- */
     // acceleration is modeled to have a gaussian noise Na and
     // a bias Ba whose increment is gaussian noise, i.e.,
     // a_obs = a + Ba + Na
@@ -237,7 +274,7 @@ void EKFEstimator::Update()
     const double dt_4 = (3. / 8.) * dt_ * dt_3;
     const GammarFunc gammar(rot_vel, dt_);
 
-    // Step 2: Update state according to system model
+    // Step 1: Update state according to system model
     // global_pos
     Xk_.segment<3>(0) += dt_ * Xk_.segment<3>(3) + dt_2 * acc_global;
     // global_vel
@@ -262,7 +299,7 @@ void EKFEstimator::Update()
     const Eigen::Matrix3d g_2 = gammar.Rank(2);
     const Eigen::Matrix3d g_3 = gammar.Rank(3);
 
-    // Step 3: Compute observations.
+    // Step 2: Compute observations.
     Eigen::Vector3d foot_local_pos[4];
 
     for (int i = 0; i < 4; i++)
@@ -275,7 +312,7 @@ void EKFEstimator::Update()
                 + rot_vel.cross(foot_local_pos[i]);
     }
 
-    // Step 4: Build jacobian matrix Ak_, Hk_
+    // Step 3: Build jacobian matrix Ak_, Hk_
     Ak_.block<3, 3>(6, 6) = gammar.Rank(0).transpose();
     Ak_.block<3, 3>(3, 21) = - dt_ * Ck_pre;
     Ak_.block<3, 3>(0, 21) = 0.5 * dt_ * Ak_.block<3, 3>(3, 21);
@@ -300,7 +337,7 @@ void EKFEstimator::Update()
         Hk_.block<3, 3>(i * 3 + n_foot, 24) = - Hk_.block<3, 3>(i * 3, 6);
     }
 
-    // Step 5: Compute state and observation covariance matrix.
+    // Step 4: Compute state and observation covariance matrix.
     Pk_ = Ak_ * Pk_ * Ak_.transpose();
 
     Pk_.diagonal() += Var_;
@@ -334,14 +371,14 @@ void EKFEstimator::Update()
 
     Sk_.noalias() = Hk_ * Pk_ * Hk_.transpose() + Qk_;
 
-    // Step 6: Run Kalman filter.
+    // Step 5: Run Kalman filter.
     Kk_.noalias() = Pk_ * Hk_.transpose() * Sk_.inverse();
     Xk_ += Kk_ * Yk_;
     Rk_.noalias() = - Kk_ * Hk_;
     Rk_.diagonal().array() += 1.;
     Pk_.applyOnTheLeft(Rk_);
 
-    // Step 7: Dump the result.
+    // Step 6: Dump the result.
     res_.position = Xk_.segment<3>(0);
     res_.orientation = orientation * physics::SO3ToQuat(Xk_.segment<3>(6));
     res_.orientation.normalize();
@@ -349,6 +386,15 @@ void EKFEstimator::Update()
     res_.rot_vel = imu.imu_data.angular_speed - Xk_.segment<3>(24);
     res_.linear_acc = imu.imu_data.acceleration - Xk_.segment<3>(21)
             + res_.orientation.conjugate() * gravity_;
+
+    // update torso vel difference,
+    // be aware they are expressed in floating frame
+    dvj_.segment<3>(0) = res_.rot_vel - vj_.segment<3>(0);
+    dvj_.segment<3>(3) = res_.orientation.conjugate()
+            * (Xk_.segment<3>(3) - vj_.segment<3>(3) - gravity_ * dt_);
+    // update torso velocity, use global linear velocity for convenience
+    vj_.segment<3>(0) = res_.rot_vel;
+    vj_.segment<3>(3) = Xk_.segment<3>(3);
 }
 
 void EKFEstimator::ResetTransform(const Eigen::Vector3d &trans,

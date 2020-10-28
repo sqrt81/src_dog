@@ -41,6 +41,7 @@ public:
 
 private:
     double dt_;
+    double filter_decay_;
 
     double var_a_;      // acceleration variance
     double var_w_;      // rotation vel variance
@@ -54,16 +55,20 @@ private:
 
     Eigen::Vector3d gravity_;
 
-    Eigen::MatrixXd Ak_; // jacobian matrix of X_k with respect to X_(k - 1)
-    Eigen::MatrixXd Pk_; // noise covariance of the state
-    Eigen::VectorXd Xk_; // state vector
-    Eigen::MatrixXd Sk_; // noise covariance by observation
-    Eigen::VectorXd Yk_; // observation (foot state error) vector
-    Eigen::MatrixXd Hk_; // foot state jacobian with respect to X_k
-    Eigen::MatrixXd Kk_; // kalman gain
-    Eigen::MatrixXd Rk_; // temporary matrix for computing variance change
-    Eigen::MatrixXd Qk_; // temporary matrix for observation basic variance
-    Eigen::VectorXd Var_; // basic variance increment
+    Eigen::MatrixXd Ak_;    // jacobian matrix of X_k with respect to X_(k - 1)
+    Eigen::MatrixXd Pk_;    // noise covariance of the state
+    Eigen::VectorXd Xk_;    // state vector
+    Eigen::MatrixXd Sk_;    // noise covariance by observation
+    Eigen::VectorXd Yk_;    // observation (foot state error) vector
+    Eigen::MatrixXd Hk_;    // foot state jacobian with respect to X_k
+    Eigen::MatrixXd Kk_;    // kalman gain
+    Eigen::MatrixXd Rk_;    // temporary matrix for computing variance change
+    Eigen::MatrixXd Qk_;    // temporary matrix for observation basic variance
+    Eigen::VectorXd Var_;   // basic variance increment
+
+    Eigen::VectorXd torq_;  // filtered external torque
+    Eigen::VectorXd vj_;    // torso and joint velocities
+    Eigen::VectorXd dvj_;    // vel difference (against last update)
 };
 
 } /* estimator */
