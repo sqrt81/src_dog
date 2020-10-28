@@ -22,6 +22,7 @@ namespace hardware
 class HardwareBase
 {
 protected:
+    using MotorCommand = message::MotorCommand;
     using MotorCommandCRef = message::MotorCommandCRef;
     using StampedJointState = message::StampedJointState;
     using StampedImu = message::StampedImu;
@@ -41,12 +42,17 @@ public:
 
     virtual void PublishCommand(MotorCommandCRef command) = 0;
 
-    inline StampedJointState GetJointState() const
+    MotorCommand GetCommand() const
+    {
+        return command_;
+    }
+
+    StampedJointState GetJointState() const
     {
         return joint_state_;
     }
 
-    inline StampedImu GetImuData() const
+    StampedImu GetImuData() const
     {
         return imu_info_;
     }
@@ -54,6 +60,7 @@ public:
 protected:
     StampedImu imu_info_;
     StampedJointState joint_state_;
+    MotorCommand command_;
 };
 
 } /* hardware */

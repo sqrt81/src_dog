@@ -58,6 +58,8 @@ void SimulatedHardware::Spin()
 
 void SimulatedHardware::PublishCommand(MotorCommandCRef command)
 {
+    command_ = command;
+
     std_msgs::Float64MultiArray cmd_array;
     cmd_array.data.resize(60);
 

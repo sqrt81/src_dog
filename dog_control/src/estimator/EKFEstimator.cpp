@@ -197,10 +197,9 @@ void EKFEstimator::Update()
     boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
     CHECK(model) << "[EKFEstimator] model is not connected!";
 
-    CHECK(cmd_) << "[EKFEstimator] command is not set!";
-
     message::StampedImu imu = hw->GetImuData();
     message::StampedJointState js = hw->GetJointState();
+    message::MotorCommand cmd = hw->GetCommand();
 
     Eigen::Vector3d ft_pos[4];
     Eigen::Vector3d ft_vel[4];
@@ -228,9 +227,9 @@ void EKFEstimator::Update()
         ft_vel[i] = jacob[i] * joint_vel;
         dvj_.segment<3>(6 + i * 3)
                 = (joint_vel - vj_.segment<3>(6 + i * 3));
-        cur_torq(i * 3    ) = - (*cmd_)[i * 3    ].torq;
-        cur_torq(i * 3 + 1) = - (*cmd_)[i * 3 + 1].torq;
-        cur_torq(i * 3 + 2) = - (*cmd_)[i * 3 + 2].torq;
+        cur_torq(i * 3    ) = - cmd[i * 3    ].torq;
+        cur_torq(i * 3 + 1) = - cmd[i * 3 + 1].torq;
+        cur_torq(i * 3 + 2) = - cmd[i * 3 + 2].torq;
     }
 
     /* ------------Estimate foot force---------------- */
