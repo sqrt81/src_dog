@@ -24,6 +24,8 @@ constexpr int n_j = 12;
 // and 3-dimenson variable for accumulated pos / rot error
 constexpr int n_var = 3 * 3 + n_foot + 3 * 2;
 
+constexpr double inf_variance = 1e2;
+
 class GammarFunc
 {
 public:
@@ -185,7 +187,7 @@ void EKFEstimator::Initialize(utils::ParamDictCRef dict)
 
     // Init variance for foot with a large value since
     // we do not know their place at first
-    Pk_.diagonal().segment<n_foot>(9).setConstant(var_pi_ * 1e6);
+    Pk_.diagonal().segment<n_foot>(9).setConstant(inf_variance);
 }
 
 void EKFEstimator::Update()
@@ -199,7 +201,6 @@ void EKFEstimator::Update()
 
     message::StampedImu imu = hw->GetImuData();
     message::StampedJointState js = hw->GetJointState();
-    message::MotorCommand cmd = hw->GetCommand();
 
     Eigen::Vector3d ft_pos[4];
     Eigen::Vector3d ft_vel[4];
@@ -227,19 +228,20 @@ void EKFEstimator::Update()
         ft_vel[i] = jacob[i] * joint_vel;
         dvj_.segment<3>(6 + i * 3)
                 = (joint_vel - vj_.segment<3>(6 + i * 3));
-        cur_torq(i * 3    ) = - cmd[i * 3    ].torq;
-        cur_torq(i * 3 + 1) = - cmd[i * 3 + 1].torq;
-        cur_torq(i * 3 + 2) = - cmd[i * 3 + 2].torq;
+        cur_torq(i * 3    ) = - js.joint_state[i * 3    ].eff;
+        cur_torq(i * 3 + 1) = - js.joint_state[i * 3 + 1].eff;
+        cur_torq(i * 3 + 2) = - js.joint_state[i * 3 + 2].eff;
     }
 
     /* ------------Estimate foot force---------------- */
-    const Eigen::MatrixXd mass_matrix = model->MassMatrix();
-    cur_torq += mass_matrix.bottomRows<n_j>() * (dvj_ / dt_)
+    cur_torq += model->MassMatrix().bottomRows<n_j>() * (dvj_ / dt_)
              + model->BiasForces().tail<n_j>()
              - model->Friction();
 
     torq_ = torq_ * (1. - filter_decay_) + cur_torq * filter_decay_;
     vj_.tail<n_j>() += dvj_.tail<n_j>();
+
+    bool in_contact[4];
 
     for (int i = 0; i < 4; i++)
     {
@@ -249,9 +251,18 @@ void EKFEstimator::Update()
         jacob[i].computeInverseWithCheck(inv_j, invertable);
 
         if (invertable)
+        {
             res_.foot_force[i] = inv_j.transpose() * torq_.segment<3>(i * 3);
+
+            in_contact[i] = res_.foot_force[i].norm() > 10.;
+        }
         else
+        {
             res_.foot_force[i].setZero();
+
+            // ignore the foot because its velocity is unobservable
+            in_contact[i] = false;
+        }
     }
 
     /* ------------Estimate robot state--------------- */
@@ -336,6 +347,10 @@ void EKFEstimator::Update()
         Hk_.block<3, 3>(i * 3 + n_foot, 24) = - Hk_.block<3, 3>(i * 3, 6);
     }
 
+    for (int i = 0; i < 4; i++)
+    {
+    }
+
     // Step 4: Compute state and observation covariance matrix.
     Pk_ = Ak_ * Pk_ * Ak_.transpose();
 
@@ -363,6 +378,16 @@ void EKFEstimator::Update()
                 = var_j_ * jacob[i] * djacob[i].transpose();
         Qk_.block<3, 3>(i * 3 + n_foot, i * 3)
                 = Qk_.block<3, 3>(i * 3, i * 3 + n_foot).transpose();
+
+        if (!in_contact[i])
+        {
+            // If a foot is not in contact, the algorithm should ignore
+            // its position and velocity.
+            // To achieve this goal, we set the variance to infinity.
+            Pk_.diagonal().segment<3>(9 + i * 3).setConstant(inf_variance);
+            Qk_.diagonal().segment<3>(i * 3 + n_foot)
+                    .setConstant(inf_variance);
+        }
     }
 
     Qk_.diagonal().head<n_foot>().array() += var_s_;
@@ -386,12 +411,12 @@ void EKFEstimator::Update()
     res_.linear_acc = imu.imu_data.acceleration - Xk_.segment<3>(21)
             + res_.orientation.conjugate() * gravity_;
 
-    // update torso vel difference,
+    // update torso vel difference.
     // be aware they are expressed in floating frame
     dvj_.segment<3>(0) = res_.rot_vel - vj_.segment<3>(0);
     dvj_.segment<3>(3) = res_.orientation.conjugate()
             * (Xk_.segment<3>(3) - vj_.segment<3>(3) - gravity_ * dt_);
-    // update torso velocity, use global linear velocity for convenience
+    // update torso velocity. use global linear velocity for convenience
     vj_.segment<3>(0) = res_.rot_vel;
     vj_.segment<3>(3) = Xk_.segment<3>(3);
 }

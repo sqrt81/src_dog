@@ -238,7 +238,7 @@ void TrajectoryController::GetFootState(double t,
                         - stat.state.rot_vel.squaredNorm() * local_pos
                         + stat.rot_acc.cross(local_pos)
                         + 2 * stat.state.rot_vel.cross(local_vel));
-            contact = true;
+            contact = false;
 
             return;
         }

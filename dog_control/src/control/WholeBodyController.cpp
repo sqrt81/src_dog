@@ -295,7 +295,7 @@ void WholeBodyController::Update()
         // must be orthogonal to the first 6 unit vector.
         // The above derivation indicates that the top 6 rows
         // of the null_space matrix are all zero.
-        // And which we can take advantage of it.
+        // And we can take advantage of it.
         aq.tail<n_f>() += null_space_
                 * DCInv(jacobian_.rightCols<n_f>() * null_space_,
                         inv_m_, leg_inv[i])
@@ -304,14 +304,13 @@ void WholeBodyController::Update()
 
         if (foot_contact_[i])
         {
-            CE_.middleRows<3>(n_s + i * 3)
-                    = - jacobian_.leftCols<n_s>();
+            CE_.middleRows<3>(n_s + i * 3) = - jacobian_.leftCols<n_s>();
             local_jacob[i] = jacobian_.rightCols<n_j - n_s>();
             res_opt.segment<3>(n_s + i * 3) = ref_force_[i];
         }
         else // Disable foot force if foot i is not in contact.
         {
-            CE_.middleRows<3>(n_s + i * 3).setZero();
+            CE_.middleRows<3>(n_s + i * 3).setIdentity();
             res_opt.segment<3>(n_s + i * 3).setZero();
         }
     }
@@ -331,7 +330,8 @@ void WholeBodyController::Update()
             = mass_.bottomLeftCorner<n_j - n_s, n_s>() * res_opt.head<n_s>()
             + mass_.bottomRightCorner<n_j - n_s, n_j - n_s>()
               * aq.tail<n_j - n_s>()
-            + force_bias_.tail<n_j - n_s>();
+            + force_bias_.tail<n_j - n_s>()
+            - model->Friction();
 
     for (int i = 0; i < 4; i++)
     {
@@ -339,8 +339,6 @@ void WholeBodyController::Update()
             torq.noalias() -= local_jacob[i].transpose()
                     * res_opt.segment<3>(n_s + i * 3);
     }
-
-    torq -= model->Friction();
 
     for (int i = 0; i < 4; i++)
     {

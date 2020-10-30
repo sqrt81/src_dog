@@ -7,8 +7,8 @@ CONTROL = {
     kp_foot_Cartesian = 100,
     kd_foot_Cartesian = 10,
     
-    force_loss = 0.1,
-    acc_loss = 1.,
+    force_loss = 1.0,
+    acc_loss = 0.1,
   },
   
   MPC = {
