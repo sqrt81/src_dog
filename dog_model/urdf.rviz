@@ -229,6 +229,44 @@ Visualization Manager:
         foot_force: true
       Queue Size: 0
       Value: true
+    - Alpha: 1
+      Class: rviz/Effort
+      Enabled: false
+      History Length: 1
+      Joints:
+        bl_hip_x:
+          Value: true
+        bl_hip_y:
+          Value: true
+        bl_knee:
+          Value: true
+        br_hip_x:
+          Value: true
+        br_hip_y:
+          Value: true
+        br_knee:
+          Value: true
+        fl_hip_x:
+          Value: true
+        fl_hip_y:
+          Value: true
+        fl_knee:
+          Value: true
+        fr_hip_x:
+          Value: true
+        fr_hip_y:
+          Value: true
+        fr_knee:
+          Value: true
+      Name: Effort
+      Queue Size: 1
+      Robot Description: robot_description
+      Scale: 0.20000000298023224
+      TF Prefix: ""
+      Topic: /dog/joint_states
+      Unreliable: false
+      Value: false
+      Width: 0.019999999552965164
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -257,7 +295,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 2.374293327331543
+      Distance: 2.059291124343872
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -273,9 +311,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.28039830923080444
+      Pitch: 0.33039817214012146
       Target Frame: <Fixed Frame>
-      Yaw: 4.228600978851318
+      Yaw: 2.4217708110809326
     Saved: ~
 Window Geometry:
   Displays:

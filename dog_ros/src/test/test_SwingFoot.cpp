@@ -17,7 +17,7 @@
 
 using namespace dog_control;
 
-int main(int argc, char** argv)
+int test_SwingFoot(int argc, char** argv)
 {
     ros::init(argc, argv, "~");
     visualization::RvizVisualization vis;
