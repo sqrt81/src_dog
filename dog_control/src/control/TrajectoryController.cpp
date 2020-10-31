@@ -110,7 +110,7 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
         {
             // keep the trajectory length short.
             if (torso_traj_.size() >= traj_record_len_)
-                return;
+                break;
 
             trans.Sample(sample_time,
                          cur_state.state.trans,
@@ -131,6 +131,9 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
             torso_traj_.Push(cur_state);
             sample_time += dt_;
         }
+
+        if (torso_traj_.size() >= traj_record_len_)
+            break;
 
         last_time = next_time;
         last_state = next_state;
