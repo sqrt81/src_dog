@@ -61,7 +61,7 @@
     <link
       name="${prefix}_foot">
       <xacro:dummy_inertial />
-      <collision>
+      <collision name="${prefix}_foot_collision">
         <origin
           xyz="0 0 0"
           rpy="0 0 0" />

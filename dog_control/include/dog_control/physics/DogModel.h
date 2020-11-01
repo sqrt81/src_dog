@@ -155,6 +155,7 @@ private:
     // foot pos and vel
     std::array<Eigen::Vector3d, 4> foot_pos_;
     std::array<Eigen::Vector3d, 4> foot_vel_;
+    std::array<bool, 4> foot_contact_;
 
     boost::weak_ptr<hardware::HardwareBase> hw_ptr_;
     boost::weak_ptr<estimator::EstimatorBase> est_ptr_;

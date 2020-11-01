@@ -97,7 +97,7 @@ void RvizVisualization::Update()
     // foot forces
     for (int i = 0; i < 4; i++)
     {
-        if (data_->foot_force[i].norm() > 0.1)
+//        if (data_->foot_force[i].norm() > 0.1)
         {
             visualization_msgs::Marker marker;
             marker.header.frame_id = "torso";

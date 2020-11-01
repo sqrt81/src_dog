@@ -40,7 +40,6 @@
       <updateRate>1000.0</updateRate>
       <bodyName>torso</bodyName>
       <topicName>ground_truth/state</topicName>
-      <gaussianNoise>0.01</gaussianNoise>
       <frameName>world</frameName>
       <xyzOffsets>0 0 0</xyzOffsets>
       <rpyOffsets>0 0 0</rpyOffsets>
@@ -69,7 +68,7 @@
     <kd>100.0</kd>
   </gazebo>
   
-  <xacro:macro name="enableSelfCollide" params="link">
+  <xacro:macro name="EnableSelfCollide" params="link">
     <gazebo reference="${link}">
       <selfCollide>true</selfCollide>
       <kp>1000000.0</kp>
@@ -77,7 +76,24 @@
     </gazebo>
   </xacro:macro>
   
-  <xacro:macro name="addTrans" params="joint id">
+  <xacro:macro name="AddContactSensor" params="prefix">
+    <gazebo reference="${prefix}_foot">
+      <sensor type="contact" name="${prefix}_foot_contact_sensor">
+        <update_rate>1000.0</update_rate>
+        <contact>
+          <collision>${prefix}_shin_fixed_joint_lump__${prefix}_foot_collision_collision_1</collision>
+        </contact>
+        <plugin name="${prefix}_foot_gazebo_ros_bumper_controller" filename="libgazebo_ros_bumper.so">
+          <alwaysOn>true</alwaysOn>
+          <frameName>${prefix}_foot</frameName>
+          <updateRate>1000</updateRate>
+          <bumperTopicName>/ground_truth/${prefix}_foot_contact</bumperTopicName>
+        </plugin>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+  
+  <xacro:macro name="AddTrans" params="joint id">
     <transmission name="trans${id}">
       <type>transmission_interface/SimpleTransmission</type>
       <joint name="${joint}">
@@ -90,39 +106,40 @@
     </transmission>
   </xacro:macro>
   
-  <!--<xacro:enableSelfCollide link="torso" />-->
-  <xacro:enableSelfCollide link="fl_hip" />
-  <xacro:enableSelfCollide link="fl_thigh" />
-  <xacro:enableSelfCollide link="fl_shin" />
-  <xacro:enableSelfCollide link="fl_foot" />
-  <xacro:enableSelfCollide link="fr_hip" />
-  <xacro:enableSelfCollide link="fr_thigh" />
-  <xacro:enableSelfCollide link="fr_shin" />
-  <xacro:enableSelfCollide link="fr_foot" />
-  <xacro:enableSelfCollide link="bl_hip" />
-  <xacro:enableSelfCollide link="bl_thigh" />
-  <xacro:enableSelfCollide link="bl_shin" />
-  <xacro:enableSelfCollide link="bl_foot" />
-  <xacro:enableSelfCollide link="br_hip" />
-  <xacro:enableSelfCollide link="br_thigh" />
-  <xacro:enableSelfCollide link="br_shin" />
-  <xacro:enableSelfCollide link="br_foot" />
+  <!--<xacro:EnableSelfCollide link="torso" />-->
+  <xacro:EnableSelfCollide link="fl_hip" />
+  <xacro:EnableSelfCollide link="fl_thigh" />
+  <xacro:EnableSelfCollide link="fl_shin" />
+  <xacro:EnableSelfCollide link="fr_hip" />
+  <xacro:EnableSelfCollide link="fr_thigh" />
+  <xacro:EnableSelfCollide link="fr_shin" />
+  <xacro:EnableSelfCollide link="bl_hip" />
+  <xacro:EnableSelfCollide link="bl_thigh" />
+  <xacro:EnableSelfCollide link="bl_shin" />
+  <xacro:EnableSelfCollide link="br_hip" />
+  <xacro:EnableSelfCollide link="br_thigh" />
+  <xacro:EnableSelfCollide link="br_shin" />
   
-  <!--<xacro:enableSelfCollide link="fl_foot" />
-  <xacro:enableSelfCollide link="fr_foot" />
-  <xacro:enableSelfCollide link="bl_foot" />
-  <xacro:enableSelfCollide link="br_foot" />-->
+  <xacro:EnableSelfCollide link="fl_foot" />
+  <xacro:EnableSelfCollide link="fr_foot" />
+  <xacro:EnableSelfCollide link="bl_foot" />
+  <xacro:EnableSelfCollide link="br_foot" />
   
-  <xacro:addTrans joint="fl_hip_x" id="1" />
-  <xacro:addTrans joint="fl_hip_y" id="2" />
-  <xacro:addTrans joint="fl_knee"  id="3" />
-  <xacro:addTrans joint="fr_hip_x" id="4" />
-  <xacro:addTrans joint="fr_hip_y" id="5" />
-  <xacro:addTrans joint="fr_knee"  id="6" />
-  <xacro:addTrans joint="bl_hip_x" id="7" />
-  <xacro:addTrans joint="bl_hip_y" id="8" />
-  <xacro:addTrans joint="bl_knee"  id="9" />
-  <xacro:addTrans joint="br_hip_x" id="10" />
-  <xacro:addTrans joint="br_hip_y" id="11" />
-  <xacro:addTrans joint="br_knee"  id="12" />
+  <xacro:AddContactSensor prefix="fl" />
+  <xacro:AddContactSensor prefix="fr" />
+  <xacro:AddContactSensor prefix="bl" />
+  <xacro:AddContactSensor prefix="br" />
+  
+  <xacro:AddTrans joint="fl_hip_x" id="1" />
+  <xacro:AddTrans joint="fl_hip_y" id="2" />
+  <xacro:AddTrans joint="fl_knee"  id="3" />
+  <xacro:AddTrans joint="fr_hip_x" id="4" />
+  <xacro:AddTrans joint="fr_hip_y" id="5" />
+  <xacro:AddTrans joint="fr_knee"  id="6" />
+  <xacro:AddTrans joint="bl_hip_x" id="7" />
+  <xacro:AddTrans joint="bl_hip_y" id="8" />
+  <xacro:AddTrans joint="bl_knee"  id="9" />
+  <xacro:AddTrans joint="br_hip_x" id="10" />
+  <xacro:AddTrans joint="br_hip_y" id="11" />
+  <xacro:AddTrans joint="br_knee"  id="12" />
 </robot>

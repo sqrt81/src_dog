@@ -27,6 +27,7 @@ struct EstimatorResult
     Eigen::Vector3d linear_acc;
 
     std::array<Eigen::Vector3d, 4> foot_force;
+    std::array<bool, 4> foot_contact;
 };
 
 } /* message */

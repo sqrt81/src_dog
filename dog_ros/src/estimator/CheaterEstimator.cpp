@@ -13,8 +13,22 @@ namespace estimator
 CheaterEstimator::CheaterEstimator()
  : EstimatorBase(), nh_("~")
 {
-    cheater_sub_ = nh_.subscribe("/gazebo/model_states", 1,
-                                 &CheaterEstimator::CheatedMsgSub, this);
+    cheater_state_sub_ = nh_.subscribe(
+                "/gazebo/model_states", 1,
+                &CheaterEstimator::CheatedStateSub, this);
+
+    cheater_contact_sub_[0] = nh_.subscribe(
+                "/ground_truth/fl_foot_contact", 1,
+                &CheaterEstimator::CheatedFLContactSub, this);
+    cheater_contact_sub_[1] = nh_.subscribe(
+                "/ground_truth/fr_foot_contact", 1,
+                &CheaterEstimator::CheatedFRContactSub, this);
+    cheater_contact_sub_[2] = nh_.subscribe(
+                "/ground_truth/bl_foot_contact", 1,
+                &CheaterEstimator::CheatedBLContactSub, this);
+    cheater_contact_sub_[3] = nh_.subscribe(
+                "/ground_truth/br_foot_contact", 1,
+                &CheaterEstimator::CheatedBRContactSub, this);
 }
 
 void CheaterEstimator::Initialize(utils::ParamDictCRef dict)
@@ -27,7 +41,7 @@ void CheaterEstimator::Update()
 
 }
 
-void CheaterEstimator::CheatedMsgSub(const gazebo_msgs::ModelStates &msg)
+void CheaterEstimator::CheatedStateSub(const gazebo_msgs::ModelStates &msg)
 {
     for (size_t i = 0; i < msg.name.size(); i++)
     {
@@ -44,6 +58,82 @@ void CheaterEstimator::CheatedMsgSub(const gazebo_msgs::ModelStates &msg)
             res_.rot_vel = res_.orientation.conjugate() * res_.rot_vel;
         }
     }
+}
+
+void CheaterEstimator::CheatedFLContactSub(
+        const gazebo_msgs::ContactsState &msg)
+{
+    Eigen::Vector3d force_total = Eigen::Vector3d::Zero();
+
+    for (const gazebo_msgs::ContactState& item : msg.states)
+    {
+        Eigen::Vector3d force_inc;
+        tf::vectorMsgToEigen(item.total_wrench.force, force_inc);
+        force_total += force_inc;
+    }
+
+    if (msg.states.size() != 0)
+        force_total /= msg.states.size();
+
+    res_.foot_contact[0] = force_total.norm() > 1.;
+    res_.foot_force[0] = force_total;
+}
+
+void CheaterEstimator::CheatedFRContactSub(
+        const gazebo_msgs::ContactsState &msg)
+{
+    Eigen::Vector3d force_total = Eigen::Vector3d::Zero();
+
+    for (const gazebo_msgs::ContactState& item : msg.states)
+    {
+        Eigen::Vector3d force_inc;
+        tf::vectorMsgToEigen(item.total_wrench.force, force_inc);
+        force_total += force_inc;
+    }
+
+    if (msg.states.size() != 0)
+        force_total /= msg.states.size();
+
+    res_.foot_contact[1] = force_total.norm() > 1.;
+    res_.foot_force[1] = force_total;
+}
+
+void CheaterEstimator::CheatedBLContactSub(
+        const gazebo_msgs::ContactsState &msg)
+{
+    Eigen::Vector3d force_total = Eigen::Vector3d::Zero();
+
+    for (const gazebo_msgs::ContactState& item : msg.states)
+    {
+        Eigen::Vector3d force_inc;
+        tf::vectorMsgToEigen(item.total_wrench.force, force_inc);
+        force_total += force_inc;
+    }
+
+    if (msg.states.size() != 0)
+        force_total /= msg.states.size();
+
+    res_.foot_contact[2] = force_total.norm() > 1.;
+    res_.foot_force[2] = force_total;
+}
+
+void CheaterEstimator::CheatedBRContactSub(
+        const gazebo_msgs::ContactsState &msg)
+{
+    Eigen::Vector3d force_total = Eigen::Vector3d::Zero();
+
+    for (const gazebo_msgs::ContactState& item : msg.states)
+    {
+        Eigen::Vector3d force_inc;
+        tf::vectorMsgToEigen(item.total_wrench.force, force_inc);
+        force_total += force_inc;
+    }
+
+    if (msg.states.size() != 0)
+        force_total /= msg.states.size();
+
+    res_.foot_contact[3] = force_total.norm() > 1.;
+    res_.foot_force[3] = force_total;
 }
 
 } /* estimator */

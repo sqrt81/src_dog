@@ -509,6 +509,7 @@ void DogModel::Update()
     js_fb.base.trans = res.position;
     js_fb.base.linear_vel = res.linear_vel;
     js_fb.base.rot_vel = res.rot_vel;
+    foot_contact_ = res.foot_contact;
 
     js_fb.q.resize(12);
     js_fb.dq.resize(12);
