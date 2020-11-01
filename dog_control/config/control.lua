@@ -27,7 +27,7 @@ CONTROL = {
   },
   
   TRAJECTORY = {
-    traj_len = 0.5
+    traj_len = 1.5
   },
   
   control_period = 0.001,
