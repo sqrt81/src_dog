@@ -179,6 +179,8 @@ void ModelPredictiveController::Update()
     CHECK(model) << "[MPC] model is not set!";
 
     cur_state_ = model->TorsoState();
+    // use current estimated contact state
+    contact_seq_[0] = model->FootContact();
 
     const double t_t_2 = utils::square(pred_interval_) * 0.5;
     const Eigen::Quaterniond rot_base = desired_traj_[0].rot.conjugate();

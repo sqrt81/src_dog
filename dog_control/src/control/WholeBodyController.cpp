@@ -203,6 +203,7 @@ void WholeBodyController::Update()
     force_bias_ = model->BiasForces();
     inv_m_ = mass_.inverse();
     vq_ = model->Vq();
+    foot_contact_ = model->FootContact();
 
     CE_.topRows<n_s>() = mass_.topLeftCorner<n_s, n_s>();
 

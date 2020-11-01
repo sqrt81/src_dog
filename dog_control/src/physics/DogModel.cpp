@@ -417,6 +417,11 @@ Eigen::Vector3d DogModel::FootVel(LegName leg_name) const
     return foot_vel_[leg_name];
 }
 
+std::array<bool, 4> DogModel::FootContact() const
+{
+    return foot_contact_;
+}
+
 DogModel::FullJacobMat DogModel::FullJacob(LegName leg_name) const
 {
     VALID_LEGNAME(leg_name);

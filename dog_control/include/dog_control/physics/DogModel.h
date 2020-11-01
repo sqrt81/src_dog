@@ -121,6 +121,12 @@ public:
     Eigen::Vector3d FootVel(LegName leg_name) const;
 
     /**
+     * @brief FootContact
+     * @return                  current foot contact state
+     */
+    std::array<bool, 4> FootContact() const;
+
+    /**
      * @brief FullJacob
      * Get the complete jacobian of a foot.
      * The full jacobian matrix has a size of 3 x 18.
