@@ -17,7 +17,7 @@ CONTROL = {
     pred_horizon = 5,
     
     pos_w = 10.,
-    vel_w = 1,
+    vel_w = 0.1,
     rot_w = 100.,
     rot_vel_w = 1,
     force_w = 1e-6,

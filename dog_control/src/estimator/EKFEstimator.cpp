@@ -241,8 +241,6 @@ void EKFEstimator::Update()
     torq_ = torq_ * (1. - filter_decay_) + cur_torq * filter_decay_;
     vj_.tail<n_j>() += dvj_.tail<n_j>();
 
-    bool in_contact[4];
-
     for (int i = 0; i < 4; i++)
     {
         // torq_ext = J.transpose * F_ext
@@ -253,15 +251,13 @@ void EKFEstimator::Update()
         if (invertable)
         {
             res_.foot_force[i] = inv_j.transpose() * torq_.segment<3>(i * 3);
-
-            in_contact[i] = res_.foot_force[i].norm() > 10.;
+            res_.foot_contact[i] = res_.foot_force[i].norm() > 5.;
         }
         else
         {
             res_.foot_force[i].setZero();
-
             // ignore the foot because its velocity is unobservable
-            in_contact[i] = false;
+            res_.foot_contact[i] = false;
         }
     }
 
@@ -379,7 +375,7 @@ void EKFEstimator::Update()
         Qk_.block<3, 3>(i * 3 + n_foot, i * 3)
                 = Qk_.block<3, 3>(i * 3, i * 3 + n_foot).transpose();
 
-        if (!in_contact[i])
+        if (!res_.foot_contact[i])
         {
             // If a foot is not in contact, the algorithm should ignore
             // its position and velocity.

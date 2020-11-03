@@ -221,10 +221,29 @@ Eigen::Vector3d DogModel::InverseKinematics(LegName leg_name,
     const double q3 = knee_out ? angle_3 : (- angle_3);
     const double sin_22 = shin_offset_z_ * sin(q3) / sqrt(leg_len_2);
 
-    const double q2 = - atan2(x_h, w_h)
+    const double q21 = - atan2(x_h, w_h);
+    const double q2 = (q21 < M_PI_2 ? q21 : q21 - 2 * M_PI)
             + asin(utils::clamp(sin_22, - 1., 1.));
 
     return Eigen::Vector3d(q1, q2, q3);
+}
+
+void DogModel::GetLegConfig(const Eigen::Vector3d &joint_pos,
+                            bool &knee_out, bool &hip_out) const
+{
+    knee_out = joint_pos(2) > 0;
+
+    const double c1 = cos(joint_pos(0));
+    const double s1 = sin(joint_pos(0));
+    const double c2 = cos(joint_pos(1));
+    const double c23 = cos(joint_pos(1) + joint_pos(2));
+
+    const double shin_z = thigh_offset_z_ * c2 + shin_offset_z_ * c23;
+    const double y_h = hip_len_y_ * c1 - shin_z * s1;
+    const double z_h = hip_len_y_ * s1 + shin_z * c1;
+    const double angle_12 = atan2(z_h, y_h);
+
+    hip_out = joint_pos(0) > angle_12;
 }
 
 Eigen::Matrix3d DogModel::ComputeJacobian(

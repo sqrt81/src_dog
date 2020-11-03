@@ -174,7 +174,9 @@ TrajectoryController::GetTorsoState(double t) const
 void TrajectoryController::GetCurLocalFootState(
         message::LegName foot_name,
         Eigen::Vector3d &pos,
-        Eigen::Vector3d &vel) const
+        Eigen::Vector3d &vel,
+        bool &hip_out,
+        bool &knee_out) const
 {
     CHECK(VALID_LEGNAME(foot_name));
 
@@ -187,12 +189,15 @@ void TrajectoryController::GetCurLocalFootState(
                 * (foot_pos_[foot_name] - cur_state.trans);
         vel = - cur_state.linear_vel;
 
-        CHECK(!cur_state.rot.coeffs().hasNaN());
+        // leg configuration is only modified during swinging
+        (void) hip_out;
+        (void) knee_out;
     }
     else
     {
         Eigen::Vector3d acc;
-        swing_traj_[foot_name]->Sample(traj_beg_time_, pos, vel, acc);
+        swing_traj_[foot_name]->Sample(traj_beg_time_, pos, vel, acc,
+                                       hip_out, knee_out);
     }
 }
 
@@ -212,7 +217,9 @@ void TrajectoryController::GetFootState(double t,
         Eigen::Vector3d local_pos;
         Eigen::Vector3d local_vel;
         Eigen::Vector3d local_acc;
-        traj.Sample(t, local_pos, local_vel, local_acc);
+        bool hip_out;
+        bool knee_out;
+        traj.Sample(t, local_pos, local_vel, local_acc, hip_out, knee_out);
 
         if (t > traj.EndTime())
         {
@@ -330,7 +337,10 @@ void TrajectoryController::SampleFootStateFromNow(
                 Eigen::Vector3d local_pos;
                 Eigen::Vector3d local_vel;
                 Eigen::Vector3d local_acc;
-                traj[j]->Sample(t, local_pos, local_vel, local_acc);
+                bool hip_out;
+                bool knee_out;
+                traj[j]->Sample(t, local_pos, local_vel, local_acc,
+                                hip_out, knee_out);
 
                 if (t > traj[j]->EndTime())
                 {
@@ -386,7 +396,10 @@ void TrajectoryController::Update()
             Eigen::Vector3d pos;
             Eigen::Vector3d vel;
             Eigen::Vector3d acc;
-            swing_traj_[i]->Sample(traj_beg_time_, pos, vel, acc);
+            bool hip_out;
+            bool knee_out;
+            swing_traj_[i]->Sample(traj_beg_time_, pos, vel, acc,
+                                   hip_out, knee_out);
             foot_pos_[i] = beg_stat.state.trans + beg_stat.state.rot * pos;
 
             swing_traj_[i].reset();

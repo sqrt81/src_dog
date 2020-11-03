@@ -27,7 +27,9 @@ public:
     virtual void Sample(double t,
                         Eigen::Vector3d &local_pos,
                         Eigen::Vector3d &local_vel,
-                        Eigen::Vector3d &local_acc) const = 0;
+                        Eigen::Vector3d &local_acc,
+                        bool &hip_outwards,
+                        bool &knee_outwards) const = 0;
 
 protected:
     double begin_time_;

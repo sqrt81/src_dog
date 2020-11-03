@@ -49,11 +49,21 @@ public:
      * @param foot_local_pos    foot position in torso's frame
      * @param knee_out          if the knee curves outwards
      * @param hip_out           if the thigh is at side of the torso
-     * @return                  desired joint position
+     * @return                  desired joint positions
      */
     Eigen::Vector3d InverseKinematics(LegName leg_name,
                                       const Eigen::Vector3d &foot_local_pos,
                                       bool knee_out, bool hip_out) const;
+
+    /**
+     * @brief GetLegConfig
+     * Get the leg configuration from leg joints' pos
+     * @param joint_pos         joint positions
+     * @param knee_out          if the knee curves outwards
+     * @param hip_out           if the thigh is at side of the torso
+     */
+    void GetLegConfig(const Eigen::Vector3d &joint_pos,
+                      bool &knee_out, bool &hip_out) const;
 
     /**
      * @brief ComputeJacobian
