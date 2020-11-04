@@ -98,6 +98,7 @@ int main(int argc, char** argv)
     traj->ConnectModel(model);
 
     half_flip->ConnectTraj(traj);
+    half_flip->ConnectFoot(foot_ctrl);
     half_flip->ConnectClock(clock);
     half_flip->ConnectModel(model);
 
@@ -133,7 +134,6 @@ int main(int argc, char** argv)
         foot_ctrl->ChangeFootControlMethod(conf);
     }
 
-    const double angle = M_PI_2;
     int iter = 0;
 
     {
@@ -164,9 +164,6 @@ int main(int argc, char** argv)
     {
         if (!ros::ok())
             return 0;
-        iter++;
-        Eigen::AngleAxisd rot((i < 100 ? 0 :  i - 100) * angle / 400,
-                              Eigen::Vector3d::UnitX());
 
         ros::spinOnce();
 
@@ -225,15 +222,6 @@ int main(int argc, char** argv)
 
     iter = 0;
 
-    conf.kd = 0.1;
-    conf.kp = 0.3;
-
-    for (int i = 0; i < 4; i++)
-    {
-        conf.foot_name = static_cast<message::LegName>(i);
-        foot_ctrl->ChangeFootControlMethod(conf);
-    }
-
     while (ros::ok())
     {
         iter++;
@@ -241,29 +229,29 @@ int main(int argc, char** argv)
         if (iter > duration)
             break;
 
-        if (iter == 400)
-        {
-            conf.kd = 4;
-            conf.kp = 30;
+//        if (iter == 400)
+//        {
+//            conf.kd = 4;
+//            conf.kp = 30;
 
-            for (int i = 0; i < 4; i++)
-            {
-                conf.foot_name = static_cast<message::LegName>(i);
-                foot_ctrl->ChangeFootControlMethod(conf);
-            }
-        }
+//            for (int i = 0; i < 4; i++)
+//            {
+//                conf.foot_name = static_cast<message::LegName>(i);
+//                foot_ctrl->ChangeFootControlMethod(conf);
+//            }
+//        }
 
-        if (iter == 800)
-        {
-            conf.kd = 0.1;
-            conf.kp = 0.3;
+//        if (iter == 800)
+//        {
+//            conf.kd = 0.1;
+//            conf.kp = 0.3;
 
-            for (int i = 0; i < 4; i++)
-            {
-                conf.foot_name = static_cast<message::LegName>(i);
-                foot_ctrl->ChangeFootControlMethod(conf);
-            }
-        }
+//            for (int i = 0; i < 4; i++)
+//            {
+//                conf.foot_name = static_cast<message::LegName>(i);
+//                foot_ctrl->ChangeFootControlMethod(conf);
+//            }
+//        }
 
         ros::spinOnce();
 

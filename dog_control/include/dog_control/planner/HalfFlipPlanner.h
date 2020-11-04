@@ -21,6 +21,7 @@ public:
     void Initialize(utils::ParamDictCRef dict);
 
     void ConnectTraj(boost::shared_ptr<control::TrajectoryController> traj);
+    void ConnectFoot(boost::shared_ptr<control::FootPosController> foot_pos);
     void ConnectClock(boost::shared_ptr<hardware::ClockBase> clock);
     void ConnectModel(boost::shared_ptr<physics::DogModel> model);
 
@@ -28,6 +29,7 @@ public:
 
 private:
     boost::weak_ptr<control::TrajectoryController> traj_ptr_;
+    boost::weak_ptr<control::FootPosController> foot_pos_ptr_;
     boost::weak_ptr<hardware::ClockBase> clock_ptr_;
     boost::weak_ptr<physics::DogModel> model_ptr_;
 
@@ -40,6 +42,7 @@ private:
     double gravity_;        // gravity's z component, positive
     double rot_factor_;
 
+    bool airborn_;          // whether the robot is in air
     bool upside_down_;      // whether the robot is flipped over
     double last_update_time_;
     bool contact_[4];

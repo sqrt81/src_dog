@@ -2,6 +2,7 @@
 
 #include "dog_control/control/ConfSpaceTraj.h"
 #include "dog_control/control/TrajectoryController.h"
+#include "dog_control/control/FootPosController.h"
 #include "dog_control/hardware/ClockBase.h"
 #include "dog_control/physics/DogModel.h"
 #include "dog_control/utils/MiniLog.h"
@@ -37,6 +38,12 @@ void HalfFlipPlanner::ConnectTraj(
     traj_ptr_ = traj;
 }
 
+void HalfFlipPlanner::ConnectFoot(
+        boost::shared_ptr<control::FootPosController> foot_pos)
+{
+    foot_pos_ptr_ = foot_pos;
+}
+
 void HalfFlipPlanner::ConnectClock(
         boost::shared_ptr<hardware::ClockBase> clock)
 {
@@ -58,9 +65,15 @@ void HalfFlipPlanner::Update()
     boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
     CHECK(model) << "[HalfFlipPlanner] model is not set!";
 
+    boost::shared_ptr<control::FootPosController> foot_ctrl
+            = foot_pos_ptr_.lock();
+    CHECK(foot_ctrl) << "[HalfFlipPlanner] foot_ctrl is not set!";
+
     boost::shared_ptr<control::TrajectoryController> traj
             = traj_ptr_.lock();
     CHECK(traj) << "[HalfFlipPlanner] traj is not set!";
+
+    message::LegConfiguration cur_conf;
 
     if (cur_time > last_update_time_ + flip_time_)
     {
@@ -180,19 +193,44 @@ void HalfFlipPlanner::Update()
                         boost::shared_ptr<control::ConfSpaceTraj>(
                             new control::ConfSpaceTraj(
                                 cur_time + stance_time_,
-                                cur_time + flip_time_ - stance_time_,
+                                cur_time + stance_time_ + aerial_time_ * 0.8,
                                 beg_pos, beg_vel, conf_beg,
                                 end_pos, end_vel, conf_end, *model)));
 
-            contact_[i] = false;
+            contact_[i] = true;
+
+            cur_conf.foot_name = name;
+            cur_conf.kd = 0.1;
+            cur_conf.kp = 0.3;
+            cur_conf.hip_outwards = !upside_down_;
+            cur_conf.knee_outwards = !upside_down_;
+            foot_ctrl->ChangeFootControlMethod(cur_conf);
         }
 
         upside_down_ = !upside_down_;
         last_update_time_ = cur_time;
+        airborn_ = false;
     }
-    // contact detect
+    else if ((cur_time - last_update_time_ > stance_time_) && !airborn_)
+    {
+        // set pd control
+
+        for (int i = 0; i < 4; i++)
+        {
+            cur_conf.foot_name = static_cast<message::LegName>(i);
+            cur_conf.kd = 4;
+            cur_conf.kp = 30;
+            cur_conf.hip_outwards = upside_down_;
+            cur_conf.knee_outwards = upside_down_;
+            foot_ctrl->ChangeFootControlMethod(cur_conf);
+            contact_[i] = false;
+        }
+
+        airborn_ = true;
+    }
     else if (cur_time - last_update_time_ > flip_time_ - stance_time_)
     {
+        // contact detect
         const auto& contact = model->FootContact();
 
         for (int i = 0; i < 4; i++)
@@ -204,21 +242,44 @@ void HalfFlipPlanner::Update()
                 traj->SetFootTrajectory(
                             static_cast<message::LegName>(i),
                             boost::shared_ptr<control::FootSwingTrajBase>());
+                cur_conf.foot_name = static_cast<message::LegName>(i);
+                cur_conf.kd = 0.1;
+                cur_conf.kp = 0.3;
+                cur_conf.hip_outwards = !upside_down_;
+                cur_conf.knee_outwards = !upside_down_;
+                foot_ctrl->ChangeFootControlMethod(cur_conf);
 
-                std::vector<message::StampedFloatingBaseState> torso_traj;
-                message::StampedFloatingBaseState state;
-                state.stamp = cur_time + 0.01;
-                state.state.trans = model->TorsoState().trans;
-                state.state.trans.z() = torso_height_;
-                state.state.rot = Eigen::AngleAxisd(- M_PI,
-                                                    Eigen::Vector3d::UnitX());
-                state.state.linear_vel = Eigen::Vector3d(0, 0, 0);
-                state.state.rot_vel = Eigen::Vector3d(0, 0, 0);
-                torso_traj.push_back(state);
-                state.stamp += 0.1;
-                torso_traj.push_back(state);
-                traj->ClearTorsoTrajectory();
-                traj->SetTorsoTrajectory(torso_traj);
+                if (contact_[0] && contact_[1] && contact_[2] && contact_[3])
+                {
+                    std::vector<message::StampedFloatingBaseState> torso_traj;
+                    message::StampedFloatingBaseState state;
+                    state.stamp = cur_time + 0.01;
+                    state.state.trans
+                            = model->FootPos(message::FL)
+                            + model->FootPos(message::FR)
+                            + model->FootPos(message::BL)
+                            + model->FootPos(message::BR);
+                    state.state.trans /= 4;
+                    state.state.trans.z() = torso_height_;
+
+                    const Eigen::Vector3d foot_ori
+                            = model->FootPos(message::FL)
+                            + model->FootPos(message::FR)
+                            - model->FootPos(message::BL)
+                            - model->FootPos(message::BR);
+                    const double yaw = atan2(foot_ori.y(), foot_ori.x());
+                    state.state.rot
+                            = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ())
+                            * Eigen::AngleAxisd(upside_down_ ? - M_PI : 0,
+                                                Eigen::Vector3d::UnitX());
+                    state.state.linear_vel = Eigen::Vector3d(0, 0, 0);
+                    state.state.rot_vel = Eigen::Vector3d(0, 0, 0);
+                    torso_traj.push_back(state);
+                    state.stamp += 0.1;
+                    torso_traj.push_back(state);
+                    traj->ClearTorsoTrajectory();
+                    traj->SetTorsoTrajectory(torso_traj);
+                }
             }
         }
     }
