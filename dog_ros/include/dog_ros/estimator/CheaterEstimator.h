@@ -5,6 +5,7 @@
 
 #include <ros/ros.h>
 #include <gazebo_msgs/ModelStates.h>
+#include <gazebo_msgs/LinkStates.h>
 #include <gazebo_msgs/ContactsState.h>
 
 namespace dog_control
@@ -24,6 +25,7 @@ public:
 
 private:
     void CheatedStateSub(const gazebo_msgs::ModelStates& msg);
+    void CheatedLinkSub(const gazebo_msgs::LinkStates& msg);
 
     void CheatedFLContactSub(const gazebo_msgs::ContactsState& msg);
     void CheatedFRContactSub(const gazebo_msgs::ContactsState& msg);
@@ -32,6 +34,8 @@ private:
 
     ros::NodeHandle nh_;
     ros::Subscriber cheater_state_sub_;
+    ros::Subscriber cheater_link_sub_;
+    std::array<Eigen::Quaterniond, 4> ee_orientation_;
     std::array<ros::Subscriber, 4> cheater_contact_sub_;
 };
 

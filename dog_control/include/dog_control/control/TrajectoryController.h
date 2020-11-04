@@ -43,7 +43,11 @@ public:
     void ConnectClock(boost::shared_ptr<hardware::ClockBase> clock);
     void ConnectModel(boost::shared_ptr<physics::DogModel> model);
 
+    void UpdateFootPos();
+
     void SetTorsoTrajectory(const TorsoTraj &torso_traj);
+
+    void ClearTorsoTrajectory();
 
     void SetFootTrajectory(message::LegName foot_name,
                            boost::shared_ptr<FootSwingTrajBase> traj);
@@ -89,7 +93,7 @@ private:
     utils::Queue<FBState> torso_traj_;
     std::array<boost::shared_ptr<FootSwingTrajBase>, 4> swing_traj_;
 
-    // stance leg foot state (local)
+    // stance leg foot state (global)
     std::array<Eigen::Vector3d, 4> foot_pos_;
 };
 

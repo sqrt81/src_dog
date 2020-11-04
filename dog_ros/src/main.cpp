@@ -1,6 +1,6 @@
 #include "dog_control/physics/DogModel.h"
 #include "dog_control/control/TrajectoryController.h"
-#include "dog_control/control/LocoSwingTraj.h"
+#include "dog_control/control/ConfSpaceTraj.h"
 #include "dog_control/control/WholeBodyController.h"
 #include "dog_control/control/FootPosController.h"
 #include "dog_control/control/ModelPredictiveController.h"
@@ -11,6 +11,7 @@
 #include "dog_control/utils/Math.h"
 #include "dog_control/utils/MiniLog.h"
 #include "dog_control/physics/EigenToolbox.h"
+#include "dog_control/planner/HalfFlipPlanner.h"
 #include "dog_ros/visualization/RvizVisualization.h"
 
 #include <ros/ros.h>
@@ -51,6 +52,9 @@ int main(int argc, char** argv)
     boost::shared_ptr<control::TrajectoryController> traj(
                 new control::TrajectoryController());
 
+    boost::shared_ptr<planner::HalfFlipPlanner> half_flip(
+                new planner::HalfFlipPlanner());
+
     model->Initialize(dict);
     hw->Initialize(dict);
     foot_ctrl->Initialize(dict);
@@ -58,6 +62,7 @@ int main(int argc, char** argv)
     mpc->Initialize(dict);
     traj->Initialize(dict);
     ekf->Initialize(dict);
+    half_flip->Initialize(dict);
 
     foot_ctrl->SetPipelineData(cmd);
     wbc->SetPipelineData(cmd);
@@ -92,6 +97,10 @@ int main(int argc, char** argv)
     traj->ConnectClock(clock);
     traj->ConnectModel(model);
 
+    half_flip->ConnectTraj(traj);
+    half_flip->ConnectClock(clock);
+    half_flip->ConnectModel(model);
+
     // spin to update hardware and time
     for (int i = 0; i < 10; i++)
     {
@@ -112,12 +121,11 @@ int main(int argc, char** argv)
     foot_ctrl->Update();
     traj->Update();
 
-
     message::LegConfiguration conf;
     conf.hip_outwards = true;
     conf.knee_outwards = true;
-    conf.kd = 1;
-    conf.kp = 3;
+    conf.kd = 4;
+    conf.kp = 30;
 
     for (int i = 0; i < 4; i++)
     {
@@ -125,6 +133,7 @@ int main(int argc, char** argv)
         foot_ctrl->ChangeFootControlMethod(conf);
     }
 
+    const double angle = M_PI_2;
     int iter = 0;
 
     {
@@ -139,7 +148,7 @@ int main(int argc, char** argv)
         torso_traj.push_back(state);
 
         state.stamp = clock->Time() + 0.5;
-        state.state.trans = {0, 0, 0.3};
+        state.state.trans = {0, 0, 0.15};
         state.state.rot = Eigen::Quaterniond::Identity();
         state.state.linear_vel = Eigen::Vector3d::Zero();
         state.state.rot_vel = Eigen::Vector3d::Zero();
@@ -156,6 +165,8 @@ int main(int argc, char** argv)
         if (!ros::ok())
             return 0;
         iter++;
+        Eigen::AngleAxisd rot((i < 100 ? 0 :  i - 100) * angle / 400,
+                              Eigen::Vector3d::UnitX());
 
         ros::spinOnce();
 
@@ -172,8 +183,8 @@ int main(int argc, char** argv)
         // update visualization data
         if (i % 20 == 0)
         {
-//            auto est = ekf->GetResult();
             auto est = estimator->GetResult();
+//            auto est = estimator->GetResult();
             vis_data.cur_pose.rot = est.orientation;
             vis_data.cur_pose.trans = est.position;
             vis_data.cur_pose.linear_vel = est.linear_vel;
@@ -208,108 +219,55 @@ int main(int argc, char** argv)
         r.sleep();
     }
 
-    constexpr double speed = 0.0;
-    constexpr double foot_h = 0.05;
-    constexpr int duration = 200;
-    bool step_fl = true;
+//    constexpr double len = 0.05;
+    constexpr int duration = 1000;
 //    constexpr double t = duration / 1000.;
 
     iter = 0;
+
+    conf.kd = 0.1;
+    conf.kp = 0.3;
+
+    for (int i = 0; i < 4; i++)
+    {
+        conf.foot_name = static_cast<message::LegName>(i);
+        foot_ctrl->ChangeFootControlMethod(conf);
+    }
 
     while (ros::ok())
     {
         iter++;
 
-        if (iter % duration == 1)
+        if (iter > duration)
+            break;
+
+        if (iter == 400)
         {
-            std::vector<message::StampedFloatingBaseState> torso_traj;
-            const double sample_time = clock->Time();
-            const double end_time = sample_time + duration * 0.001;
-            const Eigen::Vector3d torso_vel(speed, 0, 0);
-            const Eigen::Vector3d fl_local_pos = {0.283, 0.118, - 0.3};
-            const Eigen::Vector3d fr_local_pos = {0.283, - 0.118, - 0.3};
-            const Eigen::Vector3d bl_local_pos = {- 0.283, 0.118, - 0.3};
-            const Eigen::Vector3d br_local_pos = {- 0.283, - 0.118, - 0.3};
-//            auto est = ekf->GetResult();
-            auto est = estimator->GetResult();
+            conf.kd = 4;
+            conf.kp = 30;
 
+            for (int i = 0; i < 4; i++)
             {
-                message::StampedFloatingBaseState state;
-                state.state.trans = est.position;
-                state.state.trans.z() = 0.3;
-                state.state.rot = Eigen::Quaterniond::Identity();
-                state.state.linear_vel = torso_vel;
-                state.state.rot_vel = Eigen::Vector3d::Zero();
-                state.stamp = sample_time;
-                torso_traj.push_back(state);
-
-                state.stamp = end_time;
-                state.state.trans += torso_vel * (duration * 0.001);
-                torso_traj.push_back(state);
+                conf.foot_name = static_cast<message::LegName>(i);
+                foot_ctrl->ChangeFootControlMethod(conf);
             }
+        }
 
-            traj->SetTorsoTrajectory(torso_traj);
+        if (iter == 800)
+        {
+            conf.kd = 0.1;
+            conf.kp = 0.3;
 
-            // compute desired next zmp pos wrt next torso pos
-            Eigen::Vector3d offset
-                    = 0.2 * (est.orientation * est.linear_vel - torso_vel);
-            offset.z() = 0;
-
-            LOG(INFO) << offset.transpose();
-
-            if (step_fl)
+            for (int i = 0; i < 4; i++)
             {
-                Eigen::Vector3d cur_pos;
-
-                cur_pos = est.orientation.conjugate() *
-                        (model->FootPos(message::FR) - est.position);
-                boost::shared_ptr<control::FootSwingTrajBase> fr_traj(
-                            new control::LocoSwingTraj(
-                                sample_time + 0.02, end_time - 0.02,
-                                cur_pos, - torso_vel,
-                                fr_local_pos + offset, - torso_vel,
-                                Eigen::Vector3d(0, 0, foot_h)));
-                traj->SetFootTrajectory(message::FR, fr_traj);
-
-                cur_pos = est.orientation.conjugate() *
-                        (model->FootPos(message::BL) - est.position);
-                boost::shared_ptr<control::FootSwingTrajBase> bl_traj(
-                            new control::LocoSwingTraj(
-                                sample_time + 0.02, end_time - 0.02,
-                                cur_pos, - torso_vel,
-                                bl_local_pos + offset, - torso_vel,
-                                Eigen::Vector3d(0, 0, foot_h)));
-                traj->SetFootTrajectory(message::BL, bl_traj);
+                conf.foot_name = static_cast<message::LegName>(i);
+                foot_ctrl->ChangeFootControlMethod(conf);
             }
-            else
-            {
-                Eigen::Vector3d cur_pos;
-
-                cur_pos = est.orientation.conjugate() *
-                        (model->FootPos(message::FL) - est.position);
-                boost::shared_ptr<control::FootSwingTrajBase> fl_traj(
-                            new control::LocoSwingTraj(
-                                sample_time + 0.02, end_time - 0.02,
-                                cur_pos, - torso_vel,
-                                fl_local_pos + offset, - torso_vel,
-                                Eigen::Vector3d(0, 0, foot_h)));
-                traj->SetFootTrajectory(message::FL, fl_traj);
-
-                cur_pos = est.orientation.conjugate() *
-                        (model->FootPos(message::BR) - est.position);
-                boost::shared_ptr<control::FootSwingTrajBase> br_traj(
-                            new control::LocoSwingTraj(
-                                sample_time + 0.02, end_time - 0.02,
-                                cur_pos, - torso_vel,
-                                br_local_pos + offset, - torso_vel,
-                                Eigen::Vector3d(0, 0, foot_h)));
-                traj->SetFootTrajectory(message::BR, br_traj);
-            }
-
-            step_fl = !step_fl;
         }
 
         ros::spinOnce();
+
+        half_flip->Update();
 
         clock->Update();
         traj->Update();
@@ -324,8 +282,8 @@ int main(int argc, char** argv)
         // update visualization data
         if (iter % 20 == 0)
         {
-//            auto est = ekf->GetResult();
             auto est = estimator->GetResult();
+//            auto est = estimator->GetResult();
             vis_data.cur_pose.rot = est.orientation;
             vis_data.cur_pose.trans = est.position;
             vis_data.cur_pose.linear_vel = est.linear_vel;
@@ -350,6 +308,86 @@ int main(int argc, char** argv)
 //                vis_data.foot_force[j]
 //                        = vis_data.cur_pose.rot.conjugate() * force[j];
             vis_data.foot_force = est.foot_force;
+
+            vis.Update();
+        }
+
+//        auto res = ekf->GetResult();
+//        LOG(INFO) << "estimated pos " << res.position.transpose();
+
+        r.sleep();
+    }
+
+    iter = 0;
+
+    while (ros::ok())
+    {
+        iter++;
+
+//        if (iter % duration == 1)
+//        {
+//            std::vector<message::StampedFloatingBaseState> torso_traj;
+//            const double sample_time = clock->Time();
+
+//            {
+//                message::StampedFloatingBaseState state;
+//                state.state = model->TorsoState();
+//                state.state.rot_vel.setZero();
+//                state.state.linear_vel.setZero();
+//                state.state.rot
+//                        = Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX());
+
+//                state.stamp = sample_time;
+//                torso_traj.push_back(state);
+
+//                state.stamp = sample_time + 5 * duration / 4 * 0.001;
+//                torso_traj.push_back(state);
+//            }
+
+//            traj->SetTorsoTrajectory(torso_traj);
+//            traj->UpdateFootPos();
+//        }
+
+        ros::spinOnce();
+
+        clock->Update();
+        traj->Update();
+        estimator->Update();
+        ekf->Update();
+        model->Update();
+        foot_ctrl->Update();
+        mpc->Update();
+        wbc->Update();
+        hw->PublishCommand(*cmd);
+
+        // update visualization data
+        if (iter % 10 == 0)
+        {
+            auto est = estimator->GetResult();
+            vis_data.cur_pose.rot = est.orientation;
+            vis_data.cur_pose.trans = est.position;
+            vis_data.cur_pose.linear_vel = est.linear_vel;
+            vis_data.cur_pose.rot_vel = est.rot_vel;
+
+            traj->SampleTrajFromNow(4, 0.1, vis_data.torso_traj);
+            Eigen::Vector3d pos;
+
+            for (int j = 0; j < 4; j++)
+            {
+                pos = model->FootPos(message::LegName(j));
+                vis_data.foot_local_pos[j]
+                        = vis_data.cur_pose.rot.conjugate()
+                        * (pos - vis_data.cur_pose.trans);
+            }
+
+//            std::array<Eigen::Vector3d, 4> force;
+//            std::array<bool, 4> contact;
+//            mpc->GetFeetForce(clock->Time(), force, contact);
+
+//            for (int j = 0; j < 4; j++)
+//                vis_data.foot_force[j]
+//                        = vis_data.cur_pose.rot.conjugate() * force[j];
+            vis_data.foot_force = ekf->GetResult().foot_force;
 
             vis.Update();
         }

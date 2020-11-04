@@ -16,6 +16,9 @@ CheaterEstimator::CheaterEstimator()
     cheater_state_sub_ = nh_.subscribe(
                 "/gazebo/model_states", 1,
                 &CheaterEstimator::CheatedStateSub, this);
+    cheater_link_sub_ = nh_.subscribe(
+                "/gazebo/link_states", 1,
+                &CheaterEstimator::CheatedLinkSub, this);
 
     cheater_contact_sub_[0] = nh_.subscribe(
                 "/ground_truth/fl_foot_contact", 1,
@@ -60,6 +63,39 @@ void CheaterEstimator::CheatedStateSub(const gazebo_msgs::ModelStates &msg)
     }
 }
 
+void CheaterEstimator::CheatedLinkSub(const gazebo_msgs::LinkStates &msg)
+{
+    Eigen::Quaterniond base_rot = res_.orientation.conjugate();
+
+    for (unsigned int i = 0; i < msg.name.size(); i++)
+    {
+        if (msg.name[i] == "dog::fl_shin")
+        {
+            tf::quaternionMsgToEigen(msg.pose[i].orientation,
+                                     ee_orientation_[0]);
+            ee_orientation_[0] = base_rot * ee_orientation_[0];
+        }
+        else if (msg.name[i] == "dog::fr_shin")
+        {
+            tf::quaternionMsgToEigen(msg.pose[i].orientation,
+                                     ee_orientation_[1]);
+            ee_orientation_[1] = base_rot * ee_orientation_[1];
+        }
+        else if (msg.name[i] == "dog::bl_shin")
+        {
+            tf::quaternionMsgToEigen(msg.pose[i].orientation,
+                                     ee_orientation_[2]);
+            ee_orientation_[2] = base_rot * ee_orientation_[2];
+        }
+        else if (msg.name[i] == "dog::br_shin")
+        {
+            tf::quaternionMsgToEigen(msg.pose[i].orientation,
+                                     ee_orientation_[3]);
+            ee_orientation_[3] = base_rot * ee_orientation_[3];
+        }
+    }
+}
+
 void CheaterEstimator::CheatedFLContactSub(
         const gazebo_msgs::ContactsState &msg)
 {
@@ -76,7 +112,7 @@ void CheaterEstimator::CheatedFLContactSub(
         force_total /= msg.states.size();
 
     res_.foot_contact[0] = force_total.norm() > 1.;
-    res_.foot_force[0] = force_total;
+    res_.foot_force[0] = ee_orientation_[0] * force_total;
 }
 
 void CheaterEstimator::CheatedFRContactSub(
@@ -95,7 +131,7 @@ void CheaterEstimator::CheatedFRContactSub(
         force_total /= msg.states.size();
 
     res_.foot_contact[1] = force_total.norm() > 1.;
-    res_.foot_force[1] = force_total;
+    res_.foot_force[1] = ee_orientation_[1] * force_total;
 }
 
 void CheaterEstimator::CheatedBLContactSub(
@@ -114,7 +150,7 @@ void CheaterEstimator::CheatedBLContactSub(
         force_total /= msg.states.size();
 
     res_.foot_contact[2] = force_total.norm() > 1.;
-    res_.foot_force[2] = force_total;
+    res_.foot_force[2] = ee_orientation_[2] * force_total;
 }
 
 void CheaterEstimator::CheatedBRContactSub(
@@ -133,7 +169,7 @@ void CheaterEstimator::CheatedBRContactSub(
         force_total /= msg.states.size();
 
     res_.foot_contact[3] = force_total.norm() > 1.;
-    res_.foot_force[3] = force_total;
+    res_.foot_force[3] = ee_orientation_[3] * force_total;
 }
 
 } /* estimator */

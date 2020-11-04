@@ -1,7 +1,7 @@
 CONTROL = {
   WBC = {
     kp_body_Cartesian = 100,
-    kd_body_Cartesian = 10,
+    kd_body_Cartesian = 100,
     kp_body_rotation = 1000,
     kd_body_rotation = 100,
     kp_foot_Cartesian = 100,
@@ -15,6 +15,10 @@ CONTROL = {
     update_period = 0.03,
     pred_interval = 0.02,
     pred_horizon = 5,
+    
+    total_inertial_x = 150e-3,
+    total_inertial_y = 150e-3,
+    total_inertial_z = 200e-3,
     
     pos_w = 10.,
     vel_w = 0.1,

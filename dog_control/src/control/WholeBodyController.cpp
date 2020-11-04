@@ -343,7 +343,7 @@ void WholeBodyController::Update()
 
     for (int i = 0; i < 4; i++)
     {
-        if (leg_inv[i])
+        if (leg_inv[i] && foot_contact_[i])
         {
             cmd_->at(i * 3    ).torq = torq(i * 3    );
             cmd_->at(i * 3 + 1).torq = torq(i * 3 + 1);

@@ -37,9 +37,12 @@ void ModelPredictiveController::Initialize(utils::ParamDictCRef dict)
                 ReadParOrDie(dict, PARAM_WITH_NS(gravity_y, physics)),
                 ReadParOrDie(dict, PARAM_WITH_NS(gravity_z, physics)));
     inv_inertia_ = Eigen::Vector3d(
-                ReadParOrDie(dict, PARAM_WITH_NS(I0xx, model)),
-                ReadParOrDie(dict, PARAM_WITH_NS(I0yy, model)),
-                ReadParOrDie(dict, PARAM_WITH_NS(I0zz, model)))
+                ReadParOrDie(dict, PARAM_WITH_NS(total_inertial_x,
+                                                 control/MPC)),
+                ReadParOrDie(dict, PARAM_WITH_NS(total_inertial_y,
+                                                 control/MPC)),
+                ReadParOrDie(dict, PARAM_WITH_NS(total_inertial_z,
+                                                 control/MPC)))
             .cwiseInverse().asDiagonal();
     inv_mass_ = 1.0 /
             (ReadParOrDie(dict, PARAM_WITH_NS(torso_mass, model))

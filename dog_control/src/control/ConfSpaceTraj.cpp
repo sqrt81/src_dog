@@ -39,13 +39,13 @@ ConfSpaceTraj::ConfSpaceTraj(double beg_t,
     Eigen::Matrix3d inv_j;
     bool invertable;
     model_.ComputeJacobian(beg_conf.foot_name, beg_jpos)
-            .computeInverseWithCheck(inv_j, invertable);
+            .computeInverseWithCheck(inv_j, invertable, 1e-3);
     const Eigen::Vector3d beg_jvel
             = invertable ? Eigen::Vector3d(inv_j * beg_vel)
                          : Eigen::Vector3d::Zero();
 
     model_.ComputeJacobian(end_conf.foot_name, end_jpos)
-            .computeInverseWithCheck(inv_j, invertable);
+            .computeInverseWithCheck(inv_j, invertable, 1e-3);
     Eigen::Vector3d end_jvel
             = invertable ? Eigen::Vector3d(inv_j * end_vel)
                          : Eigen::Vector3d::Zero();
@@ -72,6 +72,9 @@ void ConfSpaceTraj::Sample(double t,
     local_vel = model_.ComputeJacobian(leg_, jpos) * jvel;
 
     model_.GetLegConfig(jpos, knee_outwards, hip_outwards);
+
+//    if (leg_ == message::FR)
+//        LOG(DEBUG) << "desired: " << jpos.transpose();
 }
 
 } /* control */

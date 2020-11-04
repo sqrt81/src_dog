@@ -34,6 +34,19 @@ void TrajectoryController::ConnectModel(
     model_ptr_ = model;
 }
 
+void TrajectoryController::UpdateFootPos()
+{
+    boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
+    CHECK(model) << "[TrajController] Model is not set!";
+
+    for (int i = 0; i < 4; i++)
+        if (!swing_traj_[i])
+        {
+            foot_pos_[i]
+                    = model->FootPos(static_cast<message::LegName>(i));
+        }
+}
+
 void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
 {
     unsigned int iter = 0;
@@ -67,6 +80,7 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
     torso_traj_.EraseTail(torso_traj_.size() - index);
 
     double last_time = traj_beg_time_ + (index - 1) * dt_;
+
     message::FloatingBaseState last_state;
 
     const bool first_run = (torso_traj_.size() == 0);
@@ -140,18 +154,13 @@ void TrajectoryController::SetTorsoTrajectory(const TorsoTraj &torso_traj)
     }
 
     if (first_run)
-    {
-        // init foot pos for first run
-        boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
-        CHECK(model) << "[TrajController] Model is not set!";
+        UpdateFootPos();
+}
 
-        for (int i = 0; i < 4; i++)
-            if (!swing_traj_[i])
-            {
-                foot_pos_[i]
-                        = model->FootPos(static_cast<message::LegName>(i));
-            }
-    }
+void TrajectoryController::ClearTorsoTrajectory()
+{
+    torso_traj_.Clear();
+    traj_beg_time_ = - 1.;
 }
 
 void TrajectoryController::SetFootTrajectory(
@@ -159,10 +168,15 @@ void TrajectoryController::SetFootTrajectory(
 {
     CHECK(VALID_LEGNAME(foot_name));
 
-    if (traj->EndTime() < traj_beg_time_)
-        LOG(WARN) << "[TrajController] foot traj is outdated, rejected.";
+    if (!traj)
+        swing_traj_[foot_name].reset();
     else
-        swing_traj_[foot_name] = traj;
+    {
+        if (traj->EndTime() < traj_beg_time_)
+            LOG(WARN) << "[TrajController] foot traj is outdated, rejected.";
+        else
+            swing_traj_[foot_name] = traj;
+    }
 }
 
 TrajectoryController::FBState

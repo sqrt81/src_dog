@@ -1,6 +1,6 @@
 MODEL = {
   hip_pos_x = 0.23,
-  hip_pos_y = 0.0605,
+  hip_pos_y = 0.0805,
   hip_len_x = 0.053,
   hip_len_y = 0.0575,
   thigh_offset_z = - 0.2,
