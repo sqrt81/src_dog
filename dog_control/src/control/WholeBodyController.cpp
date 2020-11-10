@@ -1,6 +1,6 @@
 #include "dog_control/control/WholeBodyController.h"
 
-#include "dog_control/control/ModelPredictiveController.h"
+#include "dog_control/control/MPCBase.h"
 #include "dog_control/control/TrajectoryController.h"
 #include "dog_control/hardware/ClockBase.h"
 #include "dog_control/physics/DogModel.h"
@@ -125,7 +125,7 @@ void WholeBodyController::ConnectModel(
 }
 
 void WholeBodyController::ConnectMPC(
-        boost::shared_ptr<control::ModelPredictiveController> mpc)
+        boost::shared_ptr<control::MPCBase> mpc)
 {
     mpc_ptr_ = mpc;
 }
@@ -171,7 +171,7 @@ void WholeBodyController::SetRefFootForces(
 
 void WholeBodyController::Update()
 {
-    boost::shared_ptr<control::ModelPredictiveController> mpc
+    boost::shared_ptr<control::MPCBase> mpc
             = mpc_ptr_.lock();
     CHECK(mpc) << "[WBC] MPC is not set!";
 

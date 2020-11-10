@@ -22,10 +22,6 @@ constexpr int n_f = 12;         // number of forces
 
 } /* anonymous */
 
-ModelPredictiveController::ModelPredictiveController()
-{
-}
-
 void ModelPredictiveController::Initialize(utils::ParamDictCRef dict)
 {
     ground_friction_ = ReadParOrDie(
@@ -97,54 +93,23 @@ void ModelPredictiveController::Initialize(utils::ParamDictCRef dict)
 //    ce0_.resize(0);
 }
 
-void ModelPredictiveController::ConnectClock(
-        boost::shared_ptr<hardware::ClockBase> clock)
-{
-    clock_ptr_ = clock;
-}
+//void ModelPredictiveController::SetDesiredTorsoTrajectory(
+//        const TorsoTraj &torso_traj)
+//{
+//    desired_traj_ = torso_traj;
+//}
 
-void ModelPredictiveController::ConnectTraj(
-        boost::shared_ptr<control::TrajectoryController> traj)
-{
-    traj_ptr_ = traj;
-}
+//void ModelPredictiveController::SetCurTorsoPose(FBSCRef cur_state)
+//{
+//    cur_state_ = cur_state;
+//}
 
-void ModelPredictiveController::ConnectModel(
-        boost::shared_ptr<physics::DogModel> model)
-{
-    model_ptr_ = model;
-}
-
-void ModelPredictiveController::SetDesiredTorsoTrajectory(
-        const TorsoTraj &torso_traj)
-{
-    desired_traj_ = torso_traj;
-}
-
-void ModelPredictiveController::SetCurTorsoPose(FBSCRef cur_state)
-{
-    cur_state_ = cur_state;
-}
-
-void ModelPredictiveController::SetFeetPose(
-        const FeetPosSeq &feet_pos, const FeetContactSeq &feet_contact)
-{
-    feet_pos_seq_ = feet_pos;
-    contact_seq_ = feet_contact;
-}
-
-void ModelPredictiveController::GetFeetForce(
-        double t,
-        std::array<Eigen::Vector3d, 4> &force,
-        std::array<bool, 4> &contact) const
-{
-    const double interval = std::max(t - last_update_time_, 0.);
-    const int cur_index = std::min(static_cast<int>(interval / pred_interval_),
-                                   static_cast<int>(pred_horizon_) - 1);
-
-    force = foot_force_[cur_index];
-    contact = contact_seq_[cur_index];
-}
+//void ModelPredictiveController::SetFeetPose(
+//        const FeetPosSeq &feet_pos, const FeetContactSeq &feet_contact)
+//{
+//    feet_pos_seq_ = feet_pos;
+//    contact_seq_ = feet_contact;
+//}
 
 void ModelPredictiveController::Update()
 {
@@ -183,7 +148,7 @@ void ModelPredictiveController::Update()
 
     cur_state_ = model->TorsoState();
     // use current estimated contact state
-    contact_seq_[0] = model->FootContact();
+//    contact_seq_[0] = model->FootContact();
 
     const double t_t_2 = utils::square(pred_interval_) * 0.5;
     const Eigen::Quaterniond rot_base = desired_traj_[0].rot.conjugate();
@@ -381,10 +346,10 @@ void ModelPredictiveController::Update()
 //    LOG(DEBUG) << "A0" << std::endl << A_[0];
 //    LOG(DEBUG) << "B0" << std::endl << B_[0];
 
-//    LOG(DEBUG) << "fl: " << foot_force_[0][0].transpose();
-//    LOG(DEBUG) << "fr: " << foot_force_[0][1].transpose();
-//    LOG(DEBUG) << "bl: " << foot_force_[0][2].transpose();
-//    LOG(DEBUG) << "br: " << foot_force_[0][3].transpose() << std::endl;
+    LOG(DEBUG) << "fl: " << foot_force_[0][0].transpose();
+    LOG(DEBUG) << "fr: " << foot_force_[0][1].transpose();
+    LOG(DEBUG) << "bl: " << foot_force_[0][2].transpose();
+    LOG(DEBUG) << "br: " << foot_force_[0][3].transpose() << std::endl;
 
 //    LOG(DEBUG) << "fl pos: " << feet_pos_seq_[0][0].transpose();
 //    LOG(DEBUG) << "fr pos: " << feet_pos_seq_[0][1].transpose();

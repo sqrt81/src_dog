@@ -1,10 +1,7 @@
 #ifndef DOG_CONTROL_CONTROL_MODELPREDICTIVECONTROLLER_H
 #define DOG_CONTROL_CONTROL_MODELPREDICTIVECONTROLLER_H
 
-#include "dog_control/utils/ClassDeclare.h"
-
-#include "dog_control/message/ModelJointState.h"
-#include "dog_control/utils/ParamDict.h"
+#include "dog_control/control/MPCBase.h"
 
 #include <Eigen/Eigen>
 #include <array>
@@ -41,80 +38,35 @@ namespace control
  * the model predictive controller will compute foot forces
  * to minimize the difference between real and desired torso trajectories.
  */
-class ModelPredictiveController
+class ModelPredictiveController : public MPCBase
 {
-protected:
-    using FBState = message::FloatingBaseState;
-    using FBSCRef = message::FBStateCRef;
-
 public:
-    using TorsoTraj = std::vector<FBState>;
-    using FeetPosSeq = std::vector<std::array<Eigen::Vector3d, 4>>;
-    using FeetContactSeq = std::vector<std::array<bool, 4>>;
+    ModelPredictiveController() = default;
 
-    ModelPredictiveController();
+    virtual void Initialize(utils::ParamDictCRef dict) override;
 
-    void Initialize(utils::ParamDictCRef dict);
+//    /**
+//     * @brief SetDesiredTorsoTrajectory
+//     * Not used.
+//     */
+//    void SetDesiredTorsoTrajectory(const TorsoTraj &torso_traj);
 
-    void ConnectClock(boost::shared_ptr<hardware::ClockBase> clock);
-    void ConnectTraj(boost::shared_ptr<control::TrajectoryController> traj);
-    void ConnectModel(boost::shared_ptr<physics::DogModel> model);
+//    /**
+//     * @brief SetCurTorsoPose
+//     * Note that when operating with other modules, this function is
+//     * not used. Instead, current state and desired trajectory
+//     * are obtained in Update().
+//     */
+//    void SetCurTorsoPose(FBSCRef cur_state);
 
-    /**
-     * @brief SetDesiredTorsoTrajectory
-     * Not used.
-     */
-    void SetDesiredTorsoTrajectory(const TorsoTraj &torso_traj);
+//    void SetFeetPose(const FeetPosSeq &feet_pos,
+//                     const FeetContactSeq &feet_contact);
 
-    /**
-     * @brief SetCurTorsoPose
-     * Note that when operating with other modules, this function is
-     * not used. Instead, current state and desired trajectory
-     * are obtained in Update().
-     */
-    void SetCurTorsoPose(FBSCRef cur_state);
+    virtual void Update() override;
 
-    void SetFeetPose(const FeetPosSeq &feet_pos,
-                     const FeetContactSeq &feet_contact);
-
-    void GetFeetForce(double t,
-                      std::array<Eigen::Vector3d, 4> &force,
-                      std::array<bool, 4> &contact) const;
-
-    void Update();
-
-private:
-    Eigen::VectorXd state_weight_;
-    double force_weight_;
-
-    double ground_friction_;
-    double f_z_max_;
-    double f_z_min_;    // minimal z force to keep foot in contact
-    Eigen::Vector3d gravity_;
+protected:
     double inv_mass_;
     Eigen::Matrix3d inv_inertia_;
-
-    // pred_horizon_ means how many steps
-    // MPC looks into the future in each prediction.
-    // pred_interval_ is the time interval between two steps.
-    // update_period_ is MPC update period,
-    // i.e., the time interval between two predictions.
-    unsigned int pred_horizon_;
-    double pred_interval_;
-    double update_period_;
-
-    // Parameter
-    double last_update_time_;       // time stamp of last prediction
-    double update_dt_;              // basic control period
-
-    boost::weak_ptr<control::TrajectoryController> traj_ptr_;
-    boost::weak_ptr<hardware::ClockBase> clock_ptr_;
-    boost::weak_ptr<physics::DogModel> model_ptr_;
-
-    FBState cur_state_;
-    TorsoTraj desired_traj_;
-    FeetPosSeq feet_pos_seq_;
-    FeetContactSeq contact_seq_;
 
     // system matrixs
     std::vector<Eigen::MatrixXd> A_;
@@ -123,9 +75,6 @@ private:
     Eigen::MatrixXd Aqp_Bqp_;
     Eigen::VectorXd Aqp_C_X0_;
     Eigen::VectorXd pred_force_;
-
-    // result storage
-    std::vector<std::array<Eigen::Vector3d, 4>> foot_force_;
 
     // used for optimization
     Eigen::MatrixXd G_;

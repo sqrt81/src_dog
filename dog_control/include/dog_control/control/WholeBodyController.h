@@ -39,7 +39,7 @@ public:
 
     void ConnectClock(boost::shared_ptr<hardware::ClockBase> clock);
     void ConnectModel(boost::shared_ptr<physics::DogModel> model);
-    void ConnectMPC(boost::shared_ptr<control::ModelPredictiveController> mpc);
+    void ConnectMPC(boost::shared_ptr<control::MPCBase> mpc);
     void ConnectTraj(boost::shared_ptr<control::TrajectoryController> traj);
 
     void SetPipelineData(boost::shared_ptr<message::MotorCommand> cmd);
@@ -88,7 +88,7 @@ private:
 
     boost::weak_ptr<hardware::ClockBase> clock_ptr_;
     boost::weak_ptr<physics::DogModel> model_ptr_;
-    boost::weak_ptr<control::ModelPredictiveController> mpc_ptr_;
+    boost::weak_ptr<control::MPCBase> mpc_ptr_;
     boost::weak_ptr<control::TrajectoryController> traj_ptr_;
 
     boost::shared_ptr<message::MotorCommand> cmd_;

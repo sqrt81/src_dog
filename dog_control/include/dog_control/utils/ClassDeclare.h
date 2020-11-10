@@ -37,7 +37,7 @@ namespace control
 {
 
 class FootPosController;
-class ModelPredictiveController;
+class MPCBase;
 class TrajectoryController;
 class WholeBodyController;
 

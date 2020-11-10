@@ -37,8 +37,12 @@ int test_MPC_linear(int argc, char** argv)
                 new control::FootPosController());
     boost::shared_ptr<control::WholeBodyController> wbc(
                 new control::WholeBodyController());
-    boost::shared_ptr<control::ModelPredictiveController> mpc(
+    boost::shared_ptr<control::MPCBase> mpc(
                 new control::ModelPredictiveController());
+
+    control::ModelPredictiveController* mpc_derived
+            = reinterpret_cast<control::ModelPredictiveController*>(
+                mpc.get());
 
     model->Initialize(dict);
     hw->Initialize(dict);
@@ -149,9 +153,9 @@ int test_MPC_linear(int argc, char** argv)
     constexpr double t = duration / 1000.;
 
     // compute desired trajectory
-    control::ModelPredictiveController::TorsoTraj torso_traj(6);
-    control::ModelPredictiveController::FeetPosSeq fseq(6);
-    control::ModelPredictiveController::FeetContactSeq fcseq(6);
+    control::MPCBase::TorsoTraj torso_traj(6);
+    control::MPCBase::FeetPosSeq fseq(6);
+    control::MPCBase::FeetContactSeq fcseq(6);
 
     while (ros::ok())
     {
@@ -187,8 +191,8 @@ int test_MPC_linear(int argc, char** argv)
                 }
             }
 
-            mpc->SetDesiredTorsoTrajectory(torso_traj);
-            mpc->SetFeetPose(fseq, fcseq);
+//            mpc_derived->SetDesiredTorsoTrajectory(torso_traj);
+//            mpc_derived->SetFeetPose(fseq, fcseq);
         }
 
         for (int i = 0; i < 4; i++)

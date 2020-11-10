@@ -1,4 +1,4 @@
-#include "dog_control/physics/DogModel.h"
+﻿#include "dog_control/physics/DogModel.h"
 #include "dog_ros/hardware/SimulatedHardware.h"
 #include "dog_ros/estimator/CheaterEstimator.h"
 #include "dog_control/control/WholeBodyController.h"
@@ -37,8 +37,12 @@ int test_MPC_ori(int argc, char** argv)
                 new control::FootPosController());
     boost::shared_ptr<control::WholeBodyController> wbc(
                 new control::WholeBodyController());
-    boost::shared_ptr<control::ModelPredictiveController> mpc(
+    boost::shared_ptr<control::MPCBase> mpc(
                 new control::ModelPredictiveController());
+
+    control::ModelPredictiveController* mpc_derived
+            = reinterpret_cast<control::ModelPredictiveController*>(
+                mpc.get());
 
     model->Initialize(dict);
     hw->Initialize(dict);
@@ -92,9 +96,9 @@ int test_MPC_ori(int argc, char** argv)
     int iter = 0;
 
     // compute desired trajectory
-    control::ModelPredictiveController::TorsoTraj torso_traj(6);
-    control::ModelPredictiveController::FeetPosSeq fseq(6);
-    control::ModelPredictiveController::FeetContactSeq fcseq(6);
+    control::MPCBase::TorsoTraj torso_traj(6);
+    control::MPCBase::FeetPosSeq fseq(6);
+    control::MPCBase::FeetContactSeq fcseq(6);
 
     // temp standup function
     for (int i = 0; i < 500; i++)
@@ -137,8 +141,8 @@ int test_MPC_ori(int argc, char** argv)
                 }
             }
 
-            mpc->SetDesiredTorsoTrajectory(torso_traj);
-            mpc->SetFeetPose(fseq, fcseq);
+//            mpc_derived->SetDesiredTorsoTrajectory(torso_traj);
+//            mpc_derived->SetFeetPose(fseq, fcseq);
         }
 
         for (int j = 0; j < 4; j++)
@@ -236,8 +240,8 @@ int test_MPC_ori(int argc, char** argv)
                 }
             }
 
-            mpc->SetDesiredTorsoTrajectory(torso_traj);
-            mpc->SetFeetPose(fseq, fcseq);
+//            mpc_derived->SetDesiredTorsoTrajectory(torso_traj);
+//            mpc_derived->SetFeetPose(fseq, fcseq);
         }
 
         message::FloatingBaseState fbs;

@@ -45,7 +45,7 @@ int test_EKFEstimator(int argc, char** argv)
                 new control::FootPosController());
     boost::shared_ptr<control::WholeBodyController> wbc(
                 new control::WholeBodyController());
-    boost::shared_ptr<control::ModelPredictiveController> mpc(
+    boost::shared_ptr<control::MPCBase> mpc(
                 new control::ModelPredictiveController());
     boost::shared_ptr<control::TrajectoryController> traj(
                 new control::TrajectoryController());
