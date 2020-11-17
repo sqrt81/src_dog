@@ -44,6 +44,8 @@ int test_MPC_linear(int argc, char** argv)
             = reinterpret_cast<control::ModelPredictiveController*>(
                 mpc.get());
 
+    (void) mpc_derived;
+
     model->Initialize(dict);
     hw->Initialize(dict);
     controller->Initialize(dict);
