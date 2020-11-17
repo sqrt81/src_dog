@@ -25,10 +25,12 @@ find_package(Eigen3 REQUIRED)
 include("../dog_control/CMakeLists.txt")
 
 file(GLOB_RECURSE ALL_SRCS "src/*.cpp")
+file(GLOB_RECURSE TEST_SRCS "src/test/*.cpp")
+#list(REMOVE_ITEM ALL_SRCS ${TEST_SRCS})
 
 SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
 SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
-SET(CMAKE_BUILD_TYPE "Debug") 
+SET(CMAKE_BUILD_TYPE "Debug")
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)

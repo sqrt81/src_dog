@@ -3,7 +3,7 @@
 #include "dog_control/control/ConfSpaceTraj.h"
 #include "dog_control/control/WholeBodyController.h"
 #include "dog_control/control/FootPosController.h"
-#include "dog_control/control/ModelPredictiveController.h"
+#include "dog_control/control/ExtendedMPC.h"
 #include "dog_ros/hardware/SimulatedHardware.h"
 #include "dog_ros/estimator/CheaterEstimator.h"
 #include "dog_control/estimator/EKFEstimator.h"
@@ -48,7 +48,7 @@ int test_HalfFlip(int argc, char** argv)
     boost::shared_ptr<control::WholeBodyController> wbc(
                 new control::WholeBodyController());
     boost::shared_ptr<control::MPCBase> mpc(
-                new control::ModelPredictiveController());
+                new control::ExtendedMPC());
     boost::shared_ptr<control::TrajectoryController> traj(
                 new control::TrajectoryController());
 
