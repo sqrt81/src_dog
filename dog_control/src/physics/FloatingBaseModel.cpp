@@ -70,6 +70,7 @@ void FloatingBaseModel::SetJointMotionState(FBJSCRef stat)
     kinematics_updated_ = false;
     bias_force_updated_ = false;
     mass_matrix_updated_ = false;
+    base_bias_jacob_updated_ = false;
 }
 
 void FloatingBaseModel::ForwardKinematics()
@@ -194,6 +195,47 @@ Eigen::VectorXd FloatingBaseModel::BiasForces()
 
     bias_force_updated_ = true;
     return compensate_;
+}
+
+SMat FloatingBaseModel::BaseForceJacobian()
+{
+    if (base_bias_jacob_updated_)
+        return base_bias_jacob_;
+
+    ForwardKinematics();
+
+    const size_t node_cnt = node_description_.size();
+
+    // link spatial force's jacobian wrt base motion
+    std::vector<SMat> link_jacob(node_cnt, SMat::Zero());
+
+    for (size_t i = node_cnt - 1; i > 0; i--)
+    {
+        const NodeDescription& nd = node_description_[i];
+        link_jacob[i]
+                += ForceCrossMat(v_[i]) * nd.inertia
+                - ForceCrossMat(nd.inertia * v_[i]);
+
+        const SMat rot_jacob
+                = ForceCrossMat(v_rot_[i]) * nd.rotor_inertia
+                - ForceCrossMat(nd.rotor_inertia * v_rot_[i]);
+
+        link_jacob[parent_[i]]
+                += X_parent_[i].transpose() * link_jacob[i] * X_parent_[i]
+                + X_parent_rot_[i].transpose() * rot_jacob * X_parent_rot_[i];
+    }
+
+    {
+        const NodeDescription& nd = node_description_[0];
+        base_bias_jacob_ = link_jacob[0];
+        SVec momentum = nd.inertia * v_[0];
+        base_bias_jacob_
+                += ForceCrossMat(v_[0]) * nd.inertia
+                - ForceCrossMat(momentum);
+    }
+
+    base_bias_jacob_updated_ = true;
+    return base_bias_jacob_;
 }
 
 Eigen::MatrixXd FloatingBaseModel::MassMatrix()

@@ -7,6 +7,8 @@ namespace dog_control
 namespace utils
 {
 
+constexpr float precision = 1e-3;
+
 namespace
 {
 
@@ -19,22 +21,26 @@ inline bool is_zero(double _x)
     return (_x < singularity && _x > - singularity);
 }
 
-inline double abs(double _x)
+template <typename T>
+inline T abs(T _x)
 {
     return (_x < 0) ? (- _x) : _x;
 }
 
-inline int round(const double _x)
+template <typename T>
+inline int round(const T _x)
 {
     return static_cast<int>(_x + 0.5);
 }
 
-inline double square(const double _x)
+template <typename T>
+inline T square(const T _x)
 {
     return _x * _x;
 }
 
-inline double clamp(const double _x, const double _lower, const double _upper)
+template <typename T>
+inline T clamp(const T _x, const T _lower, const T _upper)
 {
     if (_x > _upper)
         return _upper;

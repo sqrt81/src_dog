@@ -39,6 +39,18 @@ SVec ForceCrossProduct(const SVec& a, const SVec& b)
     return mv;
 }
 
+SMat ForceCrossMat(const SVec& a)
+{
+    SMat mat;
+
+    mat.topLeftCorner<3, 3>() = ToLowerMatrix(a.head<3>());
+    mat.topRightCorner<3, 3>() = ToLowerMatrix(a.tail<3>());
+    mat.bottomLeftCorner<3, 3>().setZero();
+    mat.bottomRightCorner<3, 3>() = ToLowerMatrix(a.head<3>());
+
+    return mat;
+}
+
 SMat BuildInertia(double mass,
                   const Eigen::Vector3d& com,
                   const Eigen::Matrix3d &rot_iner_com)

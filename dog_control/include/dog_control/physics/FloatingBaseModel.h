@@ -78,6 +78,13 @@ public:
     Eigen::VectorXd BiasForces();
 
     /**
+     * @brief BaseForceJacobian
+     * Compute base bias force's jacobian w.r.t. base spatial motion.
+     * @return          6 * 6 jacobian matrix
+     */
+    SMat BaseForceJacobian();
+
+    /**
      * @brief MassMatrix
      * Mass matrix H shows the relationship between
      * (torso & joint) acceleration and joint torque.
@@ -120,6 +127,7 @@ protected:
     bool kinematics_updated_;
     bool bias_force_updated_;
     bool mass_matrix_updated_;
+    bool base_bias_jacob_updated_;
 
     FBJS js_;
 
@@ -149,6 +157,7 @@ protected:
     // joint forces needed for zero q acceleration.
     Eigen::VectorXd compensate_;
     Eigen::MatrixXd mass_matrix_;
+    SMat base_bias_jacob_;
 };
 
 } /* spatial */

@@ -246,7 +246,7 @@ void EKFEstimator::Update()
         // torq_ext = J.transpose * F_ext
         Eigen::Matrix3d inv_j;
         bool invertable;
-        jacob[i].computeInverseWithCheck(inv_j, invertable, 1e-3);
+        jacob[i].computeInverseWithCheck(inv_j, invertable, utils::precision);
 
         if (invertable)
         {

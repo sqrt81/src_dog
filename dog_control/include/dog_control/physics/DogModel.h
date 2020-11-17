@@ -112,6 +112,8 @@ public:
 
     message::FloatingBaseState TorsoState() const;
 
+    Eigen::VectorXd Jpos() const;
+
     Eigen::VectorXd Vq() const;
 
     /**
@@ -175,6 +177,8 @@ private:
 
     boost::weak_ptr<hardware::HardwareBase> hw_ptr_;
     boost::weak_ptr<estimator::EstimatorBase> est_ptr_;
+
+    friend class SimDogModel;
 };
 
 } /* physics */

@@ -410,6 +410,16 @@ message::FloatingBaseState DogModel::TorsoState() const
     return js_.base;
 }
 
+Eigen::VectorXd DogModel::Jpos() const
+{
+    Eigen::VectorXd q(12);
+
+    for (int i = 0; i < 12; i++)
+        q(i) = js_.q[i];
+
+    return q;
+}
+
 Eigen::VectorXd DogModel::Vq() const
 {
     Eigen::VectorXd vq(18);
@@ -474,8 +484,6 @@ DogModel::FullJacobMat DogModel::FullJacob(LegName leg_name) const
 
     // The method above is the general way of computing jacobian matrix.
     // However, in case of this robot model, we can use some shortcuts.
-    jacob.middleCols<3>(leg_name * 3 + 6)
-            = X0_[0].topLeftCorner<3, 3>().transpose() * LocalJacob(leg_name);
 
     {
         const Eigen::Matrix3d rot_t
@@ -484,6 +492,9 @@ DogModel::FullJacobMat DogModel::FullJacob(LegName leg_name) const
                 = (- rot_t * X0_[0].bottomLeftCorner<3, 3>() - foot_pos)
                 * rot_t;
         jacob.middleCols<3>(3) = rot_t;
+
+        jacob.middleCols<3>(leg_name * 3 + 6)
+                = rot_t * LocalJacob(leg_name);
     }
 
     return jacob;

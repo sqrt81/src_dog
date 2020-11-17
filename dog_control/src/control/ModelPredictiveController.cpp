@@ -346,10 +346,10 @@ void ModelPredictiveController::Update()
 //    LOG(DEBUG) << "A0" << std::endl << A_[0];
 //    LOG(DEBUG) << "B0" << std::endl << B_[0];
 
-    LOG(DEBUG) << "fl: " << foot_force_[0][0].transpose();
-    LOG(DEBUG) << "fr: " << foot_force_[0][1].transpose();
-    LOG(DEBUG) << "bl: " << foot_force_[0][2].transpose();
-    LOG(DEBUG) << "br: " << foot_force_[0][3].transpose() << std::endl;
+//    LOG(DEBUG) << "fl: " << foot_force_[0][0].transpose();
+//    LOG(DEBUG) << "fr: " << foot_force_[0][1].transpose();
+//    LOG(DEBUG) << "bl: " << foot_force_[0][2].transpose();
+//    LOG(DEBUG) << "br: " << foot_force_[0][3].transpose() << std::endl;
 
 //    LOG(DEBUG) << "fl pos: " << feet_pos_seq_[0][0].transpose();
 //    LOG(DEBUG) << "fr pos: " << feet_pos_seq_[0][1].transpose();
@@ -360,6 +360,19 @@ void ModelPredictiveController::Update()
 //               << std::endl;
 
     last_update_time_ = clock->Time();
+}
+
+void ModelPredictiveController::GetFeetForce(double t,
+                  std::array<Eigen::Vector3d, 4> &force,
+                  std::array<bool, 4> &contact) const
+{
+    const double interval = std::max(t - last_update_time_, 0.);
+    const int cur_index = std::min(
+                static_cast<int>(interval / pred_interval_),
+                static_cast<int>(pred_horizon_) - 1);
+
+    force = foot_force_[cur_index];
+    contact = contact_seq_[cur_index];
 }
 
 } /* control */

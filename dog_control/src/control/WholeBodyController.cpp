@@ -186,19 +186,10 @@ void WholeBodyController::Update()
     CHECK(traj) << "[WBC] traj is not set!";
     torso_task_ = traj->GetTorsoState(cur_time);
 
-    for (int i = 0; i < 4; i++)
-    {
-        traj->GetFootState(cur_time, static_cast<message::LegName>(i),
-                           foot_state_task_[i].pos,
-                           foot_state_task_[i].vel,
-                           foot_acc_task_[i],
-                           foot_contact_[i]);
-    }
-
     boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
     CHECK(model) << "[WBC] Model is not set!";
 
-    message::FloatingBaseState torso_state = model->TorsoState();
+    const message::FloatingBaseState torso_state = model->TorsoState();
     mass_ = model->MassMatrix();
     force_bias_ = model->BiasForces();
     inv_m_ = mass_.inverse();
@@ -206,6 +197,38 @@ void WholeBodyController::Update()
     foot_contact_ = model->FootContact();
 
     CE_.topRows<n_s>() = mass_.topLeftCorner<n_s, n_s>();
+
+    for (int i = 0; i < 4; i++)
+    {
+        traj->GetFootState(cur_time, static_cast<message::LegName>(i),
+                           foot_state_task_[i].pos,
+                           foot_state_task_[i].vel,
+                           foot_acc_task_[i],
+                           foot_contact_[i]);
+
+        if (!foot_contact_[i])
+        {
+            Eigen::Vector3d local_pos;
+            Eigen::Vector3d local_vel;
+            Eigen::Vector3d local_acc;
+
+            traj->GetSwingFootLocalState(
+                        cur_time, static_cast<message::LegName>(i),
+                        local_pos, local_vel, local_acc);
+
+            foot_state_task_[i].pos
+                    = torso_state.trans + torso_state.rot * local_pos;
+            foot_state_task_[i].vel
+                    = torso_state.rot
+                    * (torso_state.linear_vel + local_vel
+                       + torso_state.rot_vel.cross(local_pos));
+            foot_acc_task_[i] = torso_state.rot * (
+                        torso_task_.linear_acc + local_acc
+                        - torso_state.rot_vel.squaredNorm() * local_pos
+                        + torso_task_.rot_acc.cross(local_pos)
+                        + 2 * torso_state.rot_vel.cross(local_vel));
+        }
+    }
 
     // command acceleration contains error feedback:
     // a_cmd = a_desired + Kp * delta_x + Kd * delta_v
@@ -276,6 +299,12 @@ void WholeBodyController::Update()
     // However, for torso tasks, vJ_i * vq = 0, so that term is omitted.
     for (int i = 0; i < 4; i++)
     {
+        // null_space_i_ = Identity() - jacobian.transpose() * jacobian
+        null_space_i_ = - jacobian_.transpose() * jacobian_;
+        null_space_i_.diagonal().array() += 1.;
+        null_space_.applyOnTheRight(null_space_i_);
+        jacobian_ = model->FullJacob(static_cast<message::LegName>(i));
+
         a_cmd = foot_acc_task_[i]
                 + kp_foot_Cartesian_
                   * (foot_state_task_[i].pos
@@ -283,12 +312,6 @@ void WholeBodyController::Update()
                 + kd_foot_Cartesian_
                   * (foot_state_task_[i].vel
                      - model->FootVel(static_cast<message::LegName>(i)));
-
-        // null_space_i_ = Identity() - jacobian.transpose() * jacobian
-        null_space_i_ = - jacobian_.transpose() * jacobian_;
-        null_space_i_.diagonal().array() += 1.;
-        null_space_.applyOnTheRight(null_space_i_);
-        jacobian_ = model->FullJacob(static_cast<message::LegName>(i));
 
         // The first 6 elements of aq is decided completely
         // by torso acceleration.
@@ -334,16 +357,22 @@ void WholeBodyController::Update()
             + force_bias_.tail<n_j - n_s>()
             - model->Friction();
 
+    torq.setZero();
+
     for (int i = 0; i < 4; i++)
     {
         if (foot_contact_[i])
+        {
             torq.noalias() -= local_jacob[i].transpose()
                     * res_opt.segment<3>(n_s + i * 3);
+//            torq.noalias() -= local_jacob[i].transpose()
+//                    * ref_force_[i];
+        }
     }
 
     for (int i = 0; i < 4; i++)
     {
-        if (leg_inv[i] && foot_contact_[i])
+        if (leg_inv[i])
         {
             cmd_->at(i * 3    ).torq = torq(i * 3    );
             cmd_->at(i * 3 + 1).torq = torq(i * 3 + 1);

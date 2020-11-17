@@ -2,6 +2,7 @@
 
 #include "dog_control/physics/DogModel.h"
 #include "dog_control/utils/CubicSplineImpl.hpp"
+#include "dog_control/utils/Math.h"
 #include "dog_control/utils/MiniLog.h"
 
 namespace dog_control
@@ -39,13 +40,13 @@ ConfSpaceTraj::ConfSpaceTraj(double beg_t,
     Eigen::Matrix3d inv_j;
     bool invertable;
     model_.ComputeJacobian(beg_conf.foot_name, beg_jpos)
-            .computeInverseWithCheck(inv_j, invertable, 1e-3);
+            .computeInverseWithCheck(inv_j, invertable, utils::precision);
     const Eigen::Vector3d beg_jvel
             = invertable ? Eigen::Vector3d(inv_j * beg_vel)
                          : Eigen::Vector3d::Zero();
 
     model_.ComputeJacobian(end_conf.foot_name, end_jpos)
-            .computeInverseWithCheck(inv_j, invertable, 1e-3);
+            .computeInverseWithCheck(inv_j, invertable, utils::precision);
     Eigen::Vector3d end_jvel
             = invertable ? Eigen::Vector3d(inv_j * end_vel)
                          : Eigen::Vector3d::Zero();

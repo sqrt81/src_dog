@@ -3,11 +3,6 @@
 
 #include "dog_control/control/MPCBase.h"
 
-#include <Eigen/Eigen>
-#include <array>
-#include <vector>
-#include <boost/weak_ptr.hpp>
-
 namespace dog_control
 {
 
@@ -64,9 +59,20 @@ public:
 
     virtual void Update() override;
 
+    virtual void GetFeetForce(
+            double t,
+            std::array<Eigen::Vector3d, 4> &force,
+            std::array<bool, 4> &contact) const override;
+
 protected:
     double inv_mass_;
     Eigen::Matrix3d inv_inertia_;
+
+    // pred_horizon_ means how many steps
+    // MPC looks into the future in each prediction.
+    // pred_interval_ is the time interval between two steps.
+    unsigned int pred_horizon_;
+    double pred_interval_;
 
     // system matrixs
     std::vector<Eigen::MatrixXd> A_;
@@ -81,7 +87,7 @@ protected:
     Eigen::VectorXd g0_;
     Eigen::MatrixXd CI_;
     Eigen::VectorXd ci0_;
-    Eigen::MatrixXd CE_;    // CE_ and ce0_ are not used here
+    Eigen::MatrixXd CE_;
     Eigen::VectorXd ce0_;
 };
 

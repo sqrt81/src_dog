@@ -47,18 +47,10 @@ public:
         model_ptr_ = model;
     }
 
-    void GetFeetForce(double t,
-                      std::array<Eigen::Vector3d, 4> &force,
-                      std::array<bool, 4> &contact) const
-    {
-        const double interval = std::max(t - last_update_time_, 0.);
-        const int cur_index = std::min(
-                    static_cast<int>(interval / pred_interval_),
-                    static_cast<int>(pred_horizon_) - 1);
-
-        force = foot_force_[cur_index];
-        contact = contact_seq_[cur_index];
-    }
+    virtual void GetFeetForce(
+            double t,
+            std::array<Eigen::Vector3d, 4> &force,
+            std::array<bool, 4> &contact) const = 0;
 
     virtual void Update() = 0;
 
@@ -71,13 +63,8 @@ protected:
     double f_z_min_;    // minimal z force to keep foot in contact
     Eigen::Vector3d gravity_;
 
-    // pred_horizon_ means how many steps
-    // MPC looks into the future in each prediction.
-    // pred_interval_ is the time interval between two steps.
     // update_period_ is MPC update period,
     // i.e., the time interval between two predictions.
-    unsigned int pred_horizon_;
-    double pred_interval_;
     double update_period_;
 
     // Parameter

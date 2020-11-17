@@ -60,11 +60,22 @@ public:
                               bool &hip_out,
                               bool &knee_out) const;
 
+    void GetLocalFootState(double t, message::LegName foot_name,
+                           Eigen::Vector3d &pos,
+                           Eigen::Vector3d &vel,
+                           bool &hip_out,
+                           bool &knee_out) const;
+
     void GetFootState(double t, message::LegName foot_name,
                       Eigen::Vector3d &pos,
                       Eigen::Vector3d &vel,
                       Eigen::Vector3d &acc,
                       bool &contact) const;
+
+    void GetSwingFootLocalState(double t, message::LegName foot_name,
+                                Eigen::Vector3d &local_pos,
+                                Eigen::Vector3d &local_vel,
+                                Eigen::Vector3d &local_acc) const;
 
     void GetTorsoTraj(const std::vector<double>& time_stamp,
                       std::vector<FBState>& traj) const;
@@ -72,8 +83,16 @@ public:
     void SampleTrajFromNow(int sample_cnt, double interval,
                            std::vector<MPCState>& traj) const;
 
+    void SampleTrajFromNow(std::vector<double> interval,
+                           std::vector<MPCState>& traj) const;
+
     void SampleFootStateFromNow(
             int sample_cnt, double interval,
+            std::vector<std::array<Eigen::Vector3d, 4>> &pos_seq,
+            std::vector<std::array<bool, 4>> &contact_seq) const;
+
+    void SampleFootStateFromNow(
+            std::vector<double> interval,
             std::vector<std::array<Eigen::Vector3d, 4>> &pos_seq,
             std::vector<std::array<bool, 4>> &contact_seq) const;
 

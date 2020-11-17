@@ -62,6 +62,7 @@ namespace physics
 {
 
 class DogModel;
+class SimDogModel;
 
 } /* physics */
 

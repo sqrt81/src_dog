@@ -28,6 +28,13 @@ SVec MotionCrossProduct(const SVec& a, const SVec& b);
  */
 SVec ForceCrossProduct(const SVec& a, const SVec& b);
 
+/**
+ * @brief ForceCrossMat
+ * Returns a matrix A, which satisfies
+ *  A * b = a x* b
+ * for all spatial vector b.
+ */
+SMat ForceCrossMat(const SVec& a);
 
 /**
  * @brief BuildInertia

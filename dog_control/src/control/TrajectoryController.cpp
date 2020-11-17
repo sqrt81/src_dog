@@ -2,6 +2,7 @@
 
 #include "dog_control/hardware/ClockBase.h"
 #include "dog_control/physics/DogModel.h"
+#include "dog_control/physics/EigenToolbox.h"
 #include "dog_control/utils/CubicSpline.h"
 #include "dog_control/utils/CubicSplineImpl.hpp"
 #include "dog_control/utils/QuatSplineImpl.hpp"
@@ -215,6 +216,37 @@ void TrajectoryController::GetCurLocalFootState(
     }
 }
 
+void TrajectoryController::GetLocalFootState(
+        double t, message::LegName foot_name,
+        Eigen::Vector3d &pos,
+        Eigen::Vector3d &vel,
+        bool &hip_out,
+        bool &knee_out) const
+{
+    CHECK(VALID_LEGNAME(foot_name));
+
+    const message::FloatingBaseState& cur_state
+            = torso_traj_[GetIndexForTime(t)].state;
+
+    if (!swing_traj_[foot_name]
+            || t < swing_traj_[foot_name]->BeginTime())
+    {
+        pos = cur_state.rot.conjugate()
+                * (foot_pos_[foot_name] - cur_state.trans);
+        vel = - cur_state.linear_vel;
+
+        // leg configuration is only modified during swinging
+        (void) hip_out;
+        (void) knee_out;
+    }
+    else
+    {
+        Eigen::Vector3d acc;
+        swing_traj_[foot_name]->Sample(t, pos, vel, acc,
+                                       hip_out, knee_out);
+    }
+}
+
 void TrajectoryController::GetFootState(double t,
                                         message::LegName foot_name,
                                         Eigen::Vector3d &pos,
@@ -280,6 +312,32 @@ void TrajectoryController::GetFootState(double t,
     return;
 }
 
+void TrajectoryController::GetSwingFootLocalState(
+        double t, message::LegName foot_name,
+        Eigen::Vector3d &local_pos,
+        Eigen::Vector3d &local_vel,
+        Eigen::Vector3d &local_acc) const
+{
+    CHECK(VALID_LEGNAME(foot_name));
+
+    if (swing_traj_[foot_name])
+    {
+        const FootSwingTrajBase& traj = *swing_traj_[foot_name];
+
+        bool hip_out;
+        bool knee_out;
+        traj.Sample(t, local_pos, local_vel, local_acc, hip_out, knee_out);
+    }
+    else
+    {
+        local_pos.setZero();
+        local_vel.setZero();
+        local_acc.setZero();
+    }
+
+    return;
+}
+
 void TrajectoryController::GetTorsoTraj(
         const std::vector<double> &time_stamp,
         std::vector<FBState> &traj) const
@@ -293,8 +351,8 @@ void TrajectoryController::GetTorsoTraj(
     }
 }
 
-void TrajectoryController::SampleTrajFromNow(int sample_cnt, double interval,
-                                             std::vector<MPCState> &traj) const
+void TrajectoryController::SampleTrajFromNow(
+        int sample_cnt, double interval, std::vector<MPCState> &traj) const
 {
     boost::shared_ptr<hardware::ClockBase> clock = clock_ptr_.lock();
     CHECK(clock) << "[TrajController] clock is not set!";
@@ -309,6 +367,25 @@ void TrajectoryController::SampleTrajFromNow(int sample_cnt, double interval,
         const double t = cur_time + i * interval;
 
         traj.push_back(torso_traj_[GetIndexForTime(t)].state);
+    }
+}
+
+void TrajectoryController::SampleTrajFromNow(
+        std::vector<double> interval, std::vector<MPCState> &traj) const
+{
+    boost::shared_ptr<hardware::ClockBase> clock = clock_ptr_.lock();
+    CHECK(clock) << "[TrajController] clock is not set!";
+
+    double cur_time = clock->Time();
+
+    traj.clear();
+    traj.reserve(interval.size() + 1);
+    traj.push_back(torso_traj_[GetIndexForTime(cur_time)].state);
+
+    for (double dt : interval)
+    {
+        cur_time += dt;
+        traj.push_back(torso_traj_[GetIndexForTime(cur_time)].state);
     }
 }
 
@@ -374,6 +451,73 @@ void TrajectoryController::SampleFootStateFromNow(
                 }
             }
         }
+    }
+}
+
+void TrajectoryController::SampleFootStateFromNow(
+        std::vector<double> interval,
+        std::vector<std::array<Eigen::Vector3d, 4>> &pos_seq,
+        std::vector<std::array<bool, 4>> &contact_seq) const
+{
+    boost::shared_ptr<hardware::ClockBase> clock = clock_ptr_.lock();
+    CHECK(clock) << "[TrajController] clock is not set!";
+
+    double cur_time = clock->Time();
+
+    pos_seq.resize(interval.size() + 1);
+    contact_seq.resize(interval.size() + 1);
+
+    const FootSwingTrajBase* traj[4];
+
+    for (int j = 0; j < 4; j++)
+        if (swing_traj_[j])
+            traj[j] = swing_traj_[j].get();
+        else
+            traj[j] = nullptr;
+
+    for (unsigned int i = 0; i <= interval.size(); i++)
+    {
+        const FBState& cur_stat = torso_traj_[GetIndexForTime(cur_time)];
+
+        for (int j = 0; j < 4; j++)
+        {
+            if (traj[j] == nullptr || cur_time < traj[j]->BeginTime())
+            {
+                // no swing traj given, or swinging hasn't begun
+                pos_seq[i][j] = foot_pos_[j];
+                contact_seq[i][j] = true;
+            }
+            else
+            {
+                Eigen::Vector3d local_pos;
+                Eigen::Vector3d local_vel;
+                Eigen::Vector3d local_acc;
+                bool hip_out;
+                bool knee_out;
+                traj[j]->Sample(cur_time, local_pos, local_vel, local_acc,
+                                hip_out, knee_out);
+
+                if (cur_time > traj[j]->EndTime())
+                {
+                    // swing finished
+                    const FBState& end_stat
+                            = torso_traj_[GetIndexForTime(traj[j]->EndTime())];
+                    pos_seq[i][j] = end_stat.state.trans
+                                  + end_stat.state.rot * local_pos;
+                    contact_seq[i][j] = true;
+                }
+                else
+                {
+                    // swinging
+                    pos_seq[i][j] = cur_stat.state.trans
+                                  + cur_stat.state.rot * local_pos;
+                    contact_seq[i][j] = false;
+                }
+            }
+        }
+
+        if (i < interval.size())
+            cur_time += interval[i];
     }
 }
 
