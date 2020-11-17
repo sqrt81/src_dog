@@ -282,11 +282,14 @@ void ModelPredictiveController::Update()
     g0_ = - Aqp_Bqp_.transpose() * state_weight_.cwiseProduct(Aqp_C_X0_);
 
     // Build constraints
-    CI_ = Eigen::MatrixXd::Zero(pred_horizon_ * n_f, foot_contact_cnt * 6);
-    ci0_.resize(foot_contact_cnt * 6);
-    CE_ = Eigen::MatrixXd::Zero(pred_horizon_ * n_f,
-                                (pred_horizon_ * 4 - foot_contact_cnt) * 3);
-    ce0_ = Eigen::VectorXd::Zero((pred_horizon_ * 4 - foot_contact_cnt) * 3);
+    Eigen::MatrixXd CI = Eigen::MatrixXd::Zero(
+                pred_horizon_ * n_f, foot_contact_cnt * 6);
+    Eigen::VectorXd ci0(foot_contact_cnt * 6);
+    Eigen::MatrixXd CE = Eigen::MatrixXd::Zero(
+                pred_horizon_ * n_f,
+                (pred_horizon_ * 4 - foot_contact_cnt) * 3);
+    Eigen::VectorXd ce0 = Eigen::VectorXd::Zero(
+                (pred_horizon_ * 4 - foot_contact_cnt) * 3);
     int col_offset = 0;
     int col_offset_eq = 0;
 
@@ -294,43 +297,44 @@ void ModelPredictiveController::Update()
     {
         for (int j = 0; j < 4; j++)
         {
-            if (contact_seq_[i][j])
+            // Keep in mind that pred_force_ is in reversed order!
+            if (contact_seq_[pred_horizon_ - i - 1][j])
             {
                 // first type of inequality constraint is z force constraint
-                CI_(i * n_f + j * 3 + 2, col_offset    ) =   1.;
-                CI_(i * n_f + j * 3 + 2, col_offset + 1) = - 1.;
-                ci0_(col_offset    ) = - f_z_min_;
-                ci0_(col_offset + 1) =   f_z_max_;
+                CI(i * n_f + j * 3 + 2, col_offset    ) =   1.;
+                CI(i * n_f + j * 3 + 2, col_offset + 1) = - 1.;
+                ci0(col_offset    ) = - f_z_min_;
+                ci0(col_offset + 1) =   f_z_max_;
 
                 // second type is maxium friction constraint
-                CI_(i * n_f + j * 3    , col_offset + 2) =               1.;
-                CI_(i * n_f + j * 3 + 2, col_offset + 2) = ground_friction_;
-                CI_(i * n_f + j * 3    , col_offset + 3) =             - 1.;
-                CI_(i * n_f + j * 3 + 2, col_offset + 3) = ground_friction_;
-                CI_(i * n_f + j * 3 + 1, col_offset + 4) =               1.;
-                CI_(i * n_f + j * 3 + 2, col_offset + 4) = ground_friction_;
-                CI_(i * n_f + j * 3 + 1, col_offset + 5) =             - 1.;
-                CI_(i * n_f + j * 3 + 2, col_offset + 5) = ground_friction_;
-                ci0_(col_offset + 2) = 0.;
-                ci0_(col_offset + 3) = 0.;
-                ci0_(col_offset + 4) = 0.;
-                ci0_(col_offset + 5) = 0.;
+                CI(i * n_f + j * 3    , col_offset + 2) =               1.;
+                CI(i * n_f + j * 3 + 2, col_offset + 2) = ground_friction_;
+                CI(i * n_f + j * 3    , col_offset + 3) =             - 1.;
+                CI(i * n_f + j * 3 + 2, col_offset + 3) = ground_friction_;
+                CI(i * n_f + j * 3 + 1, col_offset + 4) =               1.;
+                CI(i * n_f + j * 3 + 2, col_offset + 4) = ground_friction_;
+                CI(i * n_f + j * 3 + 1, col_offset + 5) =             - 1.;
+                CI(i * n_f + j * 3 + 2, col_offset + 5) = ground_friction_;
+                ci0(col_offset + 2) = 0.;
+                ci0(col_offset + 3) = 0.;
+                ci0(col_offset + 4) = 0.;
+                ci0(col_offset + 5) = 0.;
 
                 col_offset += 6;
             }
             else
             {
                 // If foot is not in contact, set zero force constraint.
-                CE_(i * n_f + j * 3    , col_offset_eq    ) = 1.;
-                CE_(i * n_f + j * 3 + 1, col_offset_eq + 1) = 1.;
-                CE_(i * n_f + j * 3 + 2, col_offset_eq + 2) = 1.;
+                CE(i * n_f + j * 3    , col_offset_eq    ) = 1.;
+                CE(i * n_f + j * 3 + 1, col_offset_eq + 1) = 1.;
+                CE(i * n_f + j * 3 + 2, col_offset_eq + 2) = 1.;
 
                 col_offset_eq += 3;
             }
         }
     }
 
-    optimization::SolveQuadProg(G_, g0_, CE_, ce0_, CI_, ci0_, pred_force_);
+    optimization::SolveQuadProg(G_, g0_, CE, ce0, CI, ci0, pred_force_);
 
     for (unsigned int i = 0; i < pred_horizon_; i++)
     {

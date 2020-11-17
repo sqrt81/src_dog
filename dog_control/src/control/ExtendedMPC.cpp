@@ -420,7 +420,8 @@ void ExtendedMPC::Update()
     {
         for (int j = 0; j < 4; j++)
         {
-            if (contact_seq_[i][j])
+            // Keep in mind that pred_force_ is in reversed order!
+            if (contact_seq_[pred_horizon - i - 1][j])
             {
                 // first type of inequality constraint is z force constraint
                 CI(i * n_f + j * 3 + 2, col_offset    ) =   1.;
@@ -468,6 +469,21 @@ void ExtendedMPC::Update()
         force_i[2] = pred_force_.segment<3>(i * n_f + 6);
         force_i[3] = pred_force_.segment<3>(i * n_f + 9);
     }
+
+//    for (unsigned i = 0; i < pred_horizon; i++)
+//    {
+//        LOG(DEBUG) << "step " << i;
+//        LOG(DEBUG) << "fl: " << contact_seq_[i][0]
+//                   << " force " << foot_force_[i][0].transpose();
+//        LOG(DEBUG) << "fr: " << contact_seq_[i][1]
+//                   << " force " << foot_force_[i][1].transpose();
+//        LOG(DEBUG) << "bl: " << contact_seq_[i][2]
+//                   << " force " << foot_force_[i][2].transpose();
+//        LOG(DEBUG) << "br: " << contact_seq_[i][3]
+//                   << " force " << foot_force_[i][3].transpose();
+//    }
+
+//    LOG(DEBUG) << "";
 
     last_update_time_ = cur_time;
 }

@@ -85,10 +85,6 @@ protected:
     // used for optimization
     Eigen::MatrixXd G_;
     Eigen::VectorXd g0_;
-    Eigen::MatrixXd CI_;
-    Eigen::VectorXd ci0_;
-    Eigen::MatrixXd CE_;
-    Eigen::VectorXd ce0_;
 };
 
 } /* control */
