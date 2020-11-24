@@ -190,8 +190,7 @@ void TrajectoryController::GetCurLocalFootState(
         message::LegName foot_name,
         Eigen::Vector3d &pos,
         Eigen::Vector3d &vel,
-        bool &hip_out,
-        bool &knee_out) const
+        message::LegConfigRef conf) const
 {
     CHECK(VALID_LEGNAME(foot_name));
 
@@ -205,14 +204,12 @@ void TrajectoryController::GetCurLocalFootState(
         vel = - cur_state.linear_vel;
 
         // leg configuration is only modified during swinging
-        (void) hip_out;
-        (void) knee_out;
+        (void) conf;
     }
     else
     {
         Eigen::Vector3d acc;
-        swing_traj_[foot_name]->Sample(traj_beg_time_, pos, vel, acc,
-                                       hip_out, knee_out);
+        swing_traj_[foot_name]->Sample(traj_beg_time_, pos, vel, acc, conf);
     }
 }
 
@@ -220,8 +217,7 @@ void TrajectoryController::GetLocalFootState(
         double t, message::LegName foot_name,
         Eigen::Vector3d &pos,
         Eigen::Vector3d &vel,
-        bool &hip_out,
-        bool &knee_out) const
+        message::LegConfigRef conf) const
 {
     CHECK(VALID_LEGNAME(foot_name));
 
@@ -236,14 +232,12 @@ void TrajectoryController::GetLocalFootState(
         vel = - cur_state.linear_vel;
 
         // leg configuration is only modified during swinging
-        (void) hip_out;
-        (void) knee_out;
+        (void) conf;
     }
     else
     {
         Eigen::Vector3d acc;
-        swing_traj_[foot_name]->Sample(t, pos, vel, acc,
-                                       hip_out, knee_out);
+        swing_traj_[foot_name]->Sample(t, pos, vel, acc, conf);
     }
 }
 
@@ -263,9 +257,8 @@ void TrajectoryController::GetFootState(double t,
         Eigen::Vector3d local_pos;
         Eigen::Vector3d local_vel;
         Eigen::Vector3d local_acc;
-        bool hip_out;
-        bool knee_out;
-        traj.Sample(t, local_pos, local_vel, local_acc, hip_out, knee_out);
+        message::LegConfiguration conf;
+        traj.Sample(t, local_pos, local_vel, local_acc, conf);
 
         if (t > traj.EndTime())
         {
@@ -323,10 +316,9 @@ void TrajectoryController::GetSwingFootLocalState(
     if (swing_traj_[foot_name])
     {
         const FootSwingTrajBase& traj = *swing_traj_[foot_name];
+        message::LegConfiguration conf;
 
-        bool hip_out;
-        bool knee_out;
-        traj.Sample(t, local_pos, local_vel, local_acc, hip_out, knee_out);
+        traj.Sample(t, local_pos, local_vel, local_acc, conf);
     }
     else
     {
@@ -428,10 +420,8 @@ void TrajectoryController::SampleFootStateFromNow(
                 Eigen::Vector3d local_pos;
                 Eigen::Vector3d local_vel;
                 Eigen::Vector3d local_acc;
-                bool hip_out;
-                bool knee_out;
-                traj[j]->Sample(t, local_pos, local_vel, local_acc,
-                                hip_out, knee_out);
+                message::LegConfiguration conf;
+                traj[j]->Sample(t, local_pos, local_vel, local_acc, conf);
 
                 if (t > traj[j]->EndTime())
                 {
@@ -492,10 +482,9 @@ void TrajectoryController::SampleFootStateFromNow(
                 Eigen::Vector3d local_pos;
                 Eigen::Vector3d local_vel;
                 Eigen::Vector3d local_acc;
-                bool hip_out;
-                bool knee_out;
+                message::LegConfiguration conf;
                 traj[j]->Sample(cur_time, local_pos, local_vel, local_acc,
-                                hip_out, knee_out);
+                                conf);
 
                 if (cur_time > traj[j]->EndTime())
                 {
@@ -554,10 +543,8 @@ void TrajectoryController::Update()
             Eigen::Vector3d pos;
             Eigen::Vector3d vel;
             Eigen::Vector3d acc;
-            bool hip_out;
-            bool knee_out;
-            swing_traj_[i]->Sample(traj_beg_time_, pos, vel, acc,
-                                   hip_out, knee_out);
+            message::LegConfiguration conf;
+            swing_traj_[i]->Sample(traj_beg_time_, pos, vel, acc, conf);
             foot_pos_[i] = beg_stat.state.trans + beg_stat.state.rot * pos;
 
             swing_traj_[i].reset();

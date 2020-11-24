@@ -19,20 +19,6 @@ struct FootState
 
 using FootStateCRef = const FootState&;
 
-struct LegConfiguration
-{
-    LegName foot_name;
-
-    double kp;
-    double kd;
-
-    // used to decide inverse kinematics
-    bool hip_outwards;
-    bool knee_outwards;
-};
-
-using LegConfigCRef = const LegConfiguration&;
-
 } /* message */
 
 } /* dog_control */

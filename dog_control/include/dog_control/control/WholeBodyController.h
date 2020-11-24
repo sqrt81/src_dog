@@ -104,10 +104,7 @@ private:
     Eigen::MatrixXd mass_;
     Eigen::MatrixXd inv_m_;
     Eigen::VectorXd force_bias_;
-    Eigen::VectorXd vq_;
     Eigen::MatrixXd jacobian_;
-    Eigen::MatrixXd null_space_;
-    Eigen::MatrixXd null_space_i_;
 
     // used for optimization
     Eigen::MatrixXd G_;

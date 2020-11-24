@@ -57,14 +57,12 @@ public:
     void GetCurLocalFootState(message::LegName foot_name,
                               Eigen::Vector3d &pos,
                               Eigen::Vector3d &vel,
-                              bool &hip_out,
-                              bool &knee_out) const;
+                              message::LegConfigRef conf) const;
 
     void GetLocalFootState(double t, message::LegName foot_name,
                            Eigen::Vector3d &pos,
                            Eigen::Vector3d &vel,
-                           bool &hip_out,
-                           bool &knee_out) const;
+                           message::LegConfigRef conf) const;
 
     void GetFootState(double t, message::LegName foot_name,
                       Eigen::Vector3d &pos,

@@ -198,20 +198,10 @@ int test_HalfFlip(int argc, char** argv)
                         * (pos - vis_data.cur_pose.trans);
             }
 
-//            std::array<Eigen::Vector3d, 4> force;
-//            std::array<bool, 4> contact;
-//            mpc->GetFeetForce(clock->Time(), force, contact);
-
-//            for (int j = 0; j < 4; j++)
-//                vis_data.foot_force[j]
-//                        = vis_data.cur_pose.rot.conjugate() * force[j];
             vis_data.foot_force = est.foot_force;
 
             vis.Update();
         }
-
-//        auto res = ekf->GetResult();
-//        LOG(INFO) << "estimated pos " << res.position.transpose();
 
         r.sleep();
     }
@@ -288,20 +278,10 @@ int test_HalfFlip(int argc, char** argv)
                         * (pos - vis_data.cur_pose.trans);
             }
 
-//            std::array<Eigen::Vector3d, 4> force;
-//            std::array<bool, 4> contact;
-//            mpc->GetFeetForce(clock->Time(), force, contact);
-
-//            for (int j = 0; j < 4; j++)
-//                vis_data.foot_force[j]
-//                        = vis_data.cur_pose.rot.conjugate() * force[j];
             vis_data.foot_force = est.foot_force;
 
             vis.Update();
         }
-
-//        auto res = ekf->GetResult();
-//        LOG(INFO) << "estimated pos " << res.position.transpose();
 
         r.sleep();
     }
@@ -375,7 +355,7 @@ int test_HalfFlip(int argc, char** argv)
 //            for (int j = 0; j < 4; j++)
 //                vis_data.foot_force[j]
 //                        = vis_data.cur_pose.rot.conjugate() * force[j];
-            vis_data.foot_force = ekf->GetResult().foot_force;
+            vis_data.foot_force = est.foot_force;
 
             vis.Update();
         }

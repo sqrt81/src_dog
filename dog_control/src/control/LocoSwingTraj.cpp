@@ -42,11 +42,9 @@ void LocoSwingTraj::Sample(double t,
                            Eigen::Vector3d &local_pos,
                            Eigen::Vector3d &local_vel,
                            Eigen::Vector3d &local_acc,
-                           bool &hip_outwards,
-                           bool &knee_outwards) const
+                           message::LegConfigRef conf) const
 {
-    (void) hip_outwards;
-    (void) knee_outwards;
+    (void) conf;
 
     if (t < half_time_)
     {
@@ -62,6 +60,14 @@ void LocoSwingTraj::Sample(double t,
 
         fall_.Sample(t, local_pos, local_vel, local_acc);
     }
+}
+
+bool LocoSwingTraj::DecideEnd(double t, bool in_contact)
+{
+    if (in_contact)
+        return true;
+
+    return (t > end_time_);
 }
 
 void LocoSwingTraj::Replan(double replan_t,

@@ -57,12 +57,12 @@ public:
 //    void SetFeetPose(const FeetPosSeq &feet_pos,
 //                     const FeetContactSeq &feet_contact);
 
-    virtual void Update() override;
-
     virtual void GetFeetForce(
             double t,
             std::array<Eigen::Vector3d, 4> &force,
             std::array<bool, 4> &contact) const override;
+
+    virtual void Update() override;
 
 protected:
     double inv_mass_;

@@ -30,8 +30,9 @@ public:
                 Eigen::Vector3d &local_pos,
                 Eigen::Vector3d &local_vel,
                 Eigen::Vector3d &local_acc,
-                bool &hip_outwards,
-                bool &knee_outwards) const override;
+                message::LegConfigRef conf) const override;
+
+    bool DecideEnd(double t, bool in_contact) override;
 
 private:
     double half_time_;

@@ -16,12 +16,12 @@ public:
 
     virtual void Initialize(utils::ParamDictCRef dict) override;
 
-    virtual void Update() override;
-
     virtual void GetFeetForce(
             double t,
             std::array<Eigen::Vector3d, 4> &force,
             std::array<bool, 4> &contact) const override;
+
+    virtual void Update() override;
 
 protected:
     boost::shared_ptr<physics::SimDogModel> pred_model_;

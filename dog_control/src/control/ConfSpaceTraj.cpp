@@ -60,8 +60,7 @@ void ConfSpaceTraj::Sample(double t,
                            Eigen::Vector3d &local_pos,
                            Eigen::Vector3d &local_vel,
                            Eigen::Vector3d &local_acc,
-                           bool &hip_outwards,
-                           bool &knee_outwards) const
+                           message::LegConfigRef conf) const
 {
     Eigen::Vector3d jpos;
     Eigen::Vector3d jvel;
@@ -72,10 +71,17 @@ void ConfSpaceTraj::Sample(double t,
     local_pos = model_.ComputeLocalPos(leg_, jpos);
     local_vel = model_.ComputeJacobian(leg_, jpos) * jvel;
 
-    model_.GetLegConfig(jpos, knee_outwards, hip_outwards);
+    model_.GetLegConfig(jpos, conf.knee_outwards, conf.hip_outwards);
 
 //    if (leg_ == message::FR)
 //        LOG(DEBUG) << "desired: " << jpos.transpose();
+}
+
+bool ConfSpaceTraj::DecideEnd(double t, bool in_contact)
+{
+    (void) t;
+
+    return in_contact;
 }
 
 } /* control */

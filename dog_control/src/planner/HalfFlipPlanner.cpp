@@ -222,7 +222,7 @@ void HalfFlipPlanner::Update()
             cur_conf.kp = 30;
             cur_conf.hip_outwards = upside_down_;
             cur_conf.knee_outwards = upside_down_;
-            foot_ctrl->ChangeFootControlMethod(cur_conf);
+//            foot_ctrl->ChangeFootControlMethod(cur_conf);
             contact_[i] = false;
         }
 

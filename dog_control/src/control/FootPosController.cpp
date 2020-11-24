@@ -90,13 +90,12 @@ void FootPosController::Update()
     for (unsigned int i = 0; i < 4; i++)
     {
         message::SingleMotorCommand* offset_cmd = cmd_->data() + i * 3;
-        LegConfiguration& config = config_[i];
+        LegConfig& config = config_[i];
 
         traj->GetCurLocalFootState(static_cast<message::LegName>(i),
                                    cmd_footstate_[i].pos,
                                    cmd_footstate_[i].vel,
-                                   config.hip_outwards,
-                                   config.knee_outwards);
+                                   config);
 
         const Eigen::Vector3d leg_joint =
                 model->InverseKinematics(

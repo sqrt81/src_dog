@@ -182,6 +182,7 @@ int test_MPC_ori(int argc, char** argv)
             vis_data.cur_pose.rot_vel = est.rot_vel;
 
             traj->SampleTrajFromNow(4, 0.1, vis_data.torso_traj);
+
             Eigen::Vector3d pos;
 
             for (int j = 0; j < 4; j++)
@@ -210,7 +211,7 @@ int test_MPC_ori(int argc, char** argv)
         r.sleep();
     }
 
-    constexpr double len = 0.1;
+    constexpr double len = 0.0;
     constexpr int duration = 400;
 //    constexpr double t = duration / 1000.;
 

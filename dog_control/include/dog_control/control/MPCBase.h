@@ -21,6 +21,7 @@ class MPCBase
 {
 protected:
     using FBState = message::FloatingBaseState;
+    using FBStateAcc = message::FloatingBaseStateWithAcc;
     using FBSCRef = message::FBStateCRef;
 
 public:

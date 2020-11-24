@@ -7,6 +7,7 @@
 #include "dog_control/physics/EigenToolbox.h"
 #include "dog_control/physics/DogModel.h"
 #include "dog_control/physics/SimDogModel.h"
+#include "dog_control/utils/CubicSplineImpl.hpp"
 #include "dog_control/utils/MiniLog.h"
 #include "dog_control/utils/Math.h"
 
@@ -178,8 +179,7 @@ void ExtendedMPC::Update()
             Eigen::Vector3d jpos;
             traj->GetLocalFootState(
                         sample_time, static_cast<message::LegName>(j),
-                        ft_pos, ft_vel,
-                        conf[j].hip_outwards, conf[j].knee_outwards);
+                        ft_pos, ft_vel, conf[j]);
 
             jpos = model->InverseKinematics(
                         static_cast<message::LegName>(j), ft_pos,
@@ -235,8 +235,7 @@ void ExtendedMPC::Update()
             Eigen::Vector3d ft_vel;
             traj->GetLocalFootState(
                         middle_time, static_cast<message::LegName>(j),
-                        ft_pos, ft_vel,
-                        conf[j].hip_outwards, conf[j].knee_outwards);
+                        ft_pos, ft_vel, conf[j]);
 
             jacob_force[j].topRows<3>()
                     = physics::ToLowerMatrix(ft_pos) * rot_interval;
@@ -278,7 +277,9 @@ void ExtendedMPC::Update()
         desired_acc.tail<n_j>() = Jvel_[i + 1] - Jvel_[i];
 
         desired_acc /= pred_interval;
-        desired_acc.segment<3>(3) -= rot_interval * gravity_;
+
+        const Eigen::Vector3d interval_gravity = rot_interval * gravity_;
+        desired_acc.segment<3>(3) -= interval_gravity;
 
         pred_model_->SetJointMotionState(s);
         const physics::spatial::SMat inv_H
@@ -288,6 +289,10 @@ void ExtendedMPC::Update()
         const physics::spatial::SVec force_desired
                 = pred_model_->MassMatrix().topRows<6>() * desired_acc
                 + pred_model_->BiasForces().head<6>();
+        const physics::spatial::SVec bias_desired
+                = pred_model_->BiasForces().head<6>()
+                - pred_model_->MassMatrix().block<6, 3>(0, 3)
+                * interval_gravity;
         // base_jacob is base bias force's jacobian wrt velocity.
         const physics::spatial::SMat base_jacob
                 = pred_model_->BaseForceJacobian();
@@ -343,16 +348,20 @@ void ExtendedMPC::Update()
                 Bi.middleCols<3>(j * 3).setZero();
         }
 
-        Ci.noalias() = - trans * force_desired;
+        Ci.noalias() = - trans * bias_desired;
         Ci.segment<3>(0) += rel_rot
                 * (this_state.rot_vel + next_state.rot_vel)
-                * (pred_interval * 0.5);
+                * (pred_interval * 0.5)
+                + physics::QuatToSO3(
+                    next_state.rot.conjugate() * this_state.rot);
         Ci.segment<3>(3) += this_state.trans - next_state.trans + delta_pos;
+        Ci.segment<3>(6) += this_state.rot_vel - next_state.rot_vel;
+        Ci.segment<3>(9) += this_state.linear_vel - next_state.linear_vel;
 
-        Eigen::Matrix3d local_g
+        const Eigen::Matrix3d local_g
                 = physics::ToLowerMatrix(- rot.transpose() * gravity_);
         Ai.block<3, 3>(3, 0) -= rot * local_g * t_t_2;
-        Ai.block<3, 3>(9, 0) -= local_g * pred_interval;
+        Ai.block<3, 3>(9, 0) -= rel_rot * local_g * pred_interval;
         Ai.leftCols<6>() -= trans * ext_force_jacob;
         Ai.rightCols<6>() -= trans * base_jacob;
     }
@@ -360,9 +369,10 @@ void ExtendedMPC::Update()
     {
         // add difference of X0 into C_[0]
         FBSCRef des_x0 = desired_traj_[0];
+        Eigen::Matrix<double, n_s, 1> X0;
         const Eigen::Quaterniond rot_diff
                 = des_x0.rot.conjugate() * cur_state_.rot;
-        Eigen::Matrix<double, n_s, 1> X0;
+
         X0.segment<3>(0) = physics::QuatToSO3(rot_diff);
         X0.segment<3>(3) = cur_state_.trans - des_x0.trans;
         X0.segment<3>(6) = cur_state_.rot_vel - des_x0.rot_vel;

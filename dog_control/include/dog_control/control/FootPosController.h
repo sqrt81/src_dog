@@ -4,6 +4,7 @@
 #include "dog_control/utils/ClassDeclare.h"
 
 #include "dog_control/message/FootState.h"
+#include "dog_control/message/LegConfiguration.h"
 #include "dog_control/message/MotorCommand.h"
 #include "dog_control/utils/ParamDict.h"
 
@@ -28,7 +29,7 @@ class FootPosController
 {
 protected:
     using FootState = message::FootState;
-    using LegConfiguration = message::LegConfiguration;
+    using LegConfig = message::LegConfiguration;
     using FootStateCRef = message::FootStateCRef;
     using LegConfigCRef = message::LegConfigCRef;
     using JointForces = Eigen::Matrix<double, 12, 1>;
@@ -64,7 +65,7 @@ private:
     std::array<FootState, 4> cmd_footstate_;
     std::array<FootState, 4> real_footstate_;
 
-    std::array<LegConfiguration, 4> config_;
+    std::array<LegConfig, 4> config_;
 };
 
 } /* control */
