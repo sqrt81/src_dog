@@ -59,6 +59,12 @@ public:
                               Eigen::Vector3d &vel,
                               message::LegConfigRef conf) const;
 
+    void GetCurFootState(message::LegName foot_name,
+                         Eigen::Vector3d &pos,
+                         Eigen::Vector3d &vel,
+                         Eigen::Vector3d &acc,
+                         bool &contact) const;
+
     void GetLocalFootState(double t, message::LegName foot_name,
                            Eigen::Vector3d &pos,
                            Eigen::Vector3d &vel,

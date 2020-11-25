@@ -4,6 +4,7 @@
 #include "dog_control/control/TrajectoryController.h"
 #include "dog_control/hardware/HardwareBase.h"
 #include "dog_control/physics/DogModel.h"
+#include "dog_control/physics/EigenToolbox.h"
 #include "dog_control/utils/Initializer.h"
 #include "dog_control/utils/Math.h"
 #include "dog_control/utils/MiniLog.h"
@@ -109,16 +110,15 @@ void FootPosController::Update()
         const Eigen::Matrix3d jacob = model->ComputeJacobian(
                     static_cast<message::LegName>(i), leg_joint);
         Eigen::Vector3d vel = cmd_footstate_[i].vel;
+        Eigen::Matrix3d inv_j;
+        bool invertable;
 
-        // avoid singularity
-        if (utils::is_zero(jacob.determinant()))
-        {
-            vel = Eigen::Vector3d::Zero();
-        }
-        else
-        {
-            vel = jacob.inverse() * vel;
-        }
+        jacob.computeInverseWithCheck(inv_j, invertable, utils::precision);
+
+        if (!invertable)
+            inv_j = physics::GeneralInverse(jacob);
+
+        vel = inv_j * vel;
 
         offset_cmd[0].v_desired = vel(0);
         offset_cmd[1].v_desired = vel(1);

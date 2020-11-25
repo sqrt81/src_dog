@@ -25,32 +25,11 @@ constexpr int n_f = 3 * 4;     // 3 force params (fx, fy, fz) per foot
 constexpr int n_v = n_s + n_f; // revolute joints are excluded
 constexpr int n_ci = 4 * 4;    // 4 inequality constraints per foot
 
-//inline Eigen::MatrixXd DCInv(const Eigen::MatrixXd &A,
-//                             const Eigen::MatrixXd &inv_H,
-//                             bool& invertable)
-//{
-//    const Eigen::MatrixXd tmp = inv_H * A.transpose();
-//    const Eigen::MatrixXd AHA = A * tmp;
-
-//    // If singularity occurs, disable this term.
-//    if (utils::is_zero(AHA.determinant()))
-//    {
-//        invertable = false;
-//        return Eigen::MatrixXd::Zero(A.cols(), A.rows());
-//    }
-//    else
-//    {
-//        invertable = true;
-//        return tmp * AHA.inverse();
-//    }
-//}
-
 } /* anonymous */
 
 WholeBodyController::WholeBodyController()
 {
     mass_.resize(n_j, n_j);
-    inv_m_.resize(n_j, n_j);
     force_bias_.resize(n_j);
     jacobian_.resize(3, n_j);
 
@@ -182,7 +161,6 @@ void WholeBodyController::Update()
     boost::shared_ptr<control::TrajectoryController> traj = traj_ptr_.lock();
     CHECK(traj) << "[WBC] traj is not set!";
     torso_task_ = traj->GetTorsoState(cur_time);
-//    torso_task_ = mpc->GetTorsoState(cur_time);
 
     boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
     CHECK(model) << "[WBC] Model is not set!";
@@ -190,42 +168,36 @@ void WholeBodyController::Update()
     const message::FloatingBaseState torso_state = model->TorsoState();
     mass_ = model->MassMatrix();
     force_bias_ = model->BiasForces();
-    inv_m_ = mass_.inverse();
-    foot_contact_ = model->FootContact();
+    Eigen::Matrix<double, n_j - n_s, 1> jpos = model->Jpos();
+    Eigen::Matrix<double, n_j - n_s, 1> jvel = model->Vq().tail<n_j - n_s>();
 
     CE_.topRows<n_s>() = mass_.topLeftCorner<n_s, n_s>();
 
     for (int i = 0; i < 4; i++)
     {
-        traj->GetFootState(cur_time, static_cast<message::LegName>(i),
-                           foot_state_task_[i].pos,
-                           foot_state_task_[i].vel,
-                           foot_acc_task_[i],
-                           foot_contact_[i]);
+        traj->GetCurFootState(static_cast<message::LegName>(i),
+                              foot_state_task_[i].pos,
+                              foot_state_task_[i].vel,
+                              foot_acc_task_[i],
+                              foot_contact_[i]);
 
         if (!foot_contact_[i])
         {
-            Eigen::Vector3d local_pos;
-            Eigen::Vector3d local_vel;
-            Eigen::Vector3d local_acc;
-
+            // If foot is swinging, use local state as task.
             traj->GetSwingFootLocalState(
                         cur_time, static_cast<message::LegName>(i),
-                        local_pos, local_vel, local_acc);
-
-            foot_state_task_[i].pos
-                    = torso_state.trans + torso_state.rot * local_pos;
-            foot_state_task_[i].vel
-                    = torso_state.rot
-                    * (torso_state.linear_vel + local_vel
-                       + torso_state.rot_vel.cross(local_pos));
-            foot_acc_task_[i] = torso_state.rot * (
-                        torso_task_.linear_acc + local_acc
-                        - torso_state.rot_vel.squaredNorm() * local_pos
-                        + torso_task_.rot_acc.cross(local_pos)
-                        + 2 * torso_state.rot_vel.cross(local_vel));
+                        foot_state_task_[i].pos,
+                        foot_state_task_[i].vel,
+                        foot_acc_task_[i]);
         }
     }
+
+    // aq is the desired joint acceleration, which will be
+    // iteratively updated to complete the tasks.
+    Eigen::Matrix<double, n_j, 1> aq;
+    // aq0 is joint acceleration without feedback, which is
+    // supposed to be smoother than aq.
+    Eigen::Matrix<double, n_j - n_s, 1> aq0;
 
     // command acceleration contains error feedback:
     // a_cmd = a_desired + Kp * delta_x + Kd * delta_v
@@ -235,18 +207,11 @@ void WholeBodyController::Update()
     Eigen::Quaterniond rot_pos_err
             = torso_state.rot.conjugate() * torso_task_.state.rot;
 
-    if (rot_pos_err.w() < 0)
-        rot_pos_err.coeffs() *= -1;
-
     a_cmd = torso_state.rot.conjugate() * torso_task_.rot_acc
             + kp_body_rotation_ * physics::QuatToSO3(rot_pos_err)
             + kd_body_rotation_
               * (rot_pos_err * torso_task_.state.rot_vel
                  - torso_state.rot_vel);
-
-    // aq is the desired joint acceleration, which will be
-    // iteratively updated to complete the tasks.
-    Eigen::Matrix<double, n_j, 1> aq;
     aq.segment<3>(0) = a_cmd;
 
     // The second task is body linear acceleration task.
@@ -254,56 +219,84 @@ void WholeBodyController::Update()
     // linear acceleration task is computed in global frame.
     // As a result, velocity difference should be transformed
     // into local frame to keep jacobian being simpliy identidy.
-    a_cmd = torso_task_.linear_acc
-            + kp_body_Cartesian_
-              * (torso_task_.state.trans - torso_state.trans)
+    a_cmd = kp_body_Cartesian_
+            * (torso_task_.state.trans - torso_state.trans)
             + kd_body_Cartesian_
               * (torso_task_.state.rot * torso_task_.state.linear_vel
                  - torso_state.rot * torso_state.linear_vel);
 
-    a_cmd = torso_state.rot.conjugate() * a_cmd;
+    a_cmd = torso_state.rot.conjugate() * a_cmd + torso_task_.linear_acc;
 
     aq.segment<3>(3) = a_cmd;
 
     Eigen::VectorXd res_opt(n_v);
-    std::array<Eigen::MatrixXd, 4> local_jacob;
-
-    bool leg_inv[4]; // whether leg jacobian is invertable
+    std::array<Eigen::Matrix3d, 4> foot_jacob;
 
     for (int i = 0; i < 4; i++)
     {
-        a_cmd = foot_acc_task_[i]
-                + kp_foot_Cartesian_
-                  * (foot_state_task_[i].pos
-                     - model->FootPos(static_cast<message::LegName>(i)))
-                + kd_foot_Cartesian_
-                  * (foot_state_task_[i].vel
-                     - model->FootVel(static_cast<message::LegName>(i)));
+        const message::LegName leg = static_cast<message::LegName>(i);
+        jacobian_ = model->FullJacob(leg);
 
-        jacobian_ = model->FullJacob(static_cast<message::LegName>(i));
-
-        // a = J * aq + VJ * vq
-        a_cmd -= model->VJDotVq(static_cast<message::LegName>(i))
-                + jacobian_.leftCols<n_s>() * aq.head<n_s>();
-
+        bool leg_inv;
         Eigen::Matrix3d inv_j;
-        jacobian_.block<3, 3>(0, n_s + i * 3)
-                .computeInverseWithCheck(inv_j, leg_inv[i], utils::precision);
+        Eigen::Vector3d a_cmd0;
 
-        if (leg_inv[i])
-            aq.segment<3>(n_s + i * 3) = inv_j * a_cmd;
+        if (foot_contact_[i])
+        {
+            a_cmd = foot_acc_task_[i]
+                    + kp_foot_Cartesian_
+                    * (foot_state_task_[i].pos - model->FootPos(leg))
+                    + kd_foot_Cartesian_
+                    * (foot_state_task_[i].vel - model->FootVel(leg));
+
+            // a = J * aq + VJ * vq
+            // = J_leg * aq_leg + VJ * vq + J_base * aq_base
+            const Eigen::Vector3d a_add = model->VJDotVq(leg)
+                    + jacobian_.leftCols<n_s>() * aq.head<n_s>();
+            a_cmd -= a_add;
+            a_cmd0 = foot_acc_task_[i] - a_add;
+            jacobian_.block<3, 3>(0, n_s + i * 3)
+                    .computeInverseWithCheck(inv_j, leg_inv,
+                                             utils::precision);
+
+            if (!leg_inv)
+                inv_j = physics::GeneralInverse(
+                            jacobian_.block<3, 3>(0, n_s + i * 3));
+        }
         else
-            aq.segment<3>(n_s + i * 3).setZero();
+        {
+            const Eigen::Matrix3d local_jacob = model->LocalJacob(leg);
+            a_cmd = foot_acc_task_[i]
+                    + kp_foot_Cartesian_
+                    * (foot_state_task_[i].pos
+                       - model->ComputeLocalPos(leg, jpos.segment<3>(i * 3)));
+                    + kd_foot_Cartesian_
+                    * (foot_state_task_[i].vel
+                       - local_jacob * jvel.segment<3>(i * 3));
+            const Eigen::Vector3d a_add
+                    = torso_state.rot.conjugate() * model->VJDotVq(leg);
+            a_cmd -= a_add;
+            a_cmd0 = foot_acc_task_[i] - a_add;
+
+            local_jacob.computeInverseWithCheck(inv_j, leg_inv,
+                                                utils::precision);
+
+            if (!leg_inv)
+                inv_j = physics::GeneralInverse(local_jacob);
+        }
+
+        aq.segment<3>(n_s + i * 3) = inv_j * a_cmd;
+        aq0.segment<3>(i * 3) = inv_j * a_cmd0;
 
         if (foot_contact_[i])
         {
             CE_.middleRows<3>(n_s + i * 3) = - jacobian_.leftCols<n_s>();
-            local_jacob[i] = jacobian_.rightCols<n_j - n_s>();
+            foot_jacob[i] = jacobian_.middleCols<3>(n_s + i * 3);
             res_opt.segment<3>(n_s + i * 3) = ref_force_[i];
         }
         else // Disable foot force if foot i is not in contact.
         {
-            CE_.middleRows<3>(n_s + i * 3).setIdentity();
+            CE_.middleRows<3>(n_s + i * 3).setZero();
             res_opt.segment<3>(n_s + i * 3).setZero();
         }
     }
@@ -311,10 +304,9 @@ void WholeBodyController::Update()
     // compensate gravity
     aq.segment<3>(3) -= torso_state.rot.conjugate() * gravity_;
     res_opt.head<n_s>() = aq.head<n_s>();
-    Eigen::VectorXd res0 = res_opt;
     g0_ = - res_opt.cwiseProduct(G_.diagonal());
     ce0_ = force_bias_.head<n_s>()
-            + mass_.topRightCorner<n_s, n_j - n_s>() * aq.tail<n_j - n_s>();
+            + mass_.topRightCorner<n_s, n_j - n_s>() * aq0;
 
     optimization::SolveQuadProg(G_, g0_, CE_, ce0_, CI_, ci0_, res_opt);
 
@@ -332,27 +324,18 @@ void WholeBodyController::Update()
     {
         if (foot_contact_[i])
         {
-            torq.noalias() -= local_jacob[i].transpose()
+            torq.segment<3>(i * 3).noalias()
+                    -= foot_jacob[i].transpose()
                     * res_opt.segment<3>(n_s + i * 3);
-//            torq.noalias() -= local_jacob[i].transpose()
+//            torq.segment<3>(i * 3).noalias()
+//                    -= foot_jacob[i].transpose()
 //                    * ref_force_[i];
         }
     }
 
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < n_j - n_s; i++)
     {
-        if (leg_inv[i])
-        {
-            cmd_->at(i * 3    ).torq = torq(i * 3    );
-            cmd_->at(i * 3 + 1).torq = torq(i * 3 + 1);
-            cmd_->at(i * 3 + 2).torq = torq(i * 3 + 2);
-        }
-        else
-        {
-            cmd_->at(i * 3    ).torq = 0;
-            cmd_->at(i * 3 + 1).torq = 0;
-            cmd_->at(i * 3 + 2).torq = 0;
-        }
+        cmd_->at(i).torq = torq(i);
     }
 }
 

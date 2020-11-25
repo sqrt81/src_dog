@@ -1,10 +1,19 @@
 #include "dog_control/physics/EigenToolbox.h"
 
+#include "dog_control/utils/Math.h"
+
 namespace dog_control
 {
 
 namespace physics
 {
+
+Eigen::Matrix3d GeneralInverse(const Eigen::Matrix3d& A)
+{
+    Eigen::Matrix3d base = A.transpose() * A;
+    base.diagonal().array() += utils::precision;
+    return base.inverse() * A.transpose();
+}
 
 Eigen::Matrix3d ToLowerMatrix(const Eigen::Vector3d& upper_vec)
 {

@@ -213,6 +213,53 @@ void TrajectoryController::GetCurLocalFootState(
     }
 }
 
+void TrajectoryController::GetCurFootState(
+        message::LegName foot_name,
+        Eigen::Vector3d &pos,
+        Eigen::Vector3d &vel,
+        Eigen::Vector3d &acc,
+        bool &contact) const
+{
+    CHECK(VALID_LEGNAME(foot_name));
+
+    if (swing_traj_[foot_name]
+            && traj_beg_time_ > swing_traj_[foot_name]->BeginTime())
+    {
+        const FootSwingTrajBase& traj = *swing_traj_[foot_name];
+
+        Eigen::Vector3d local_pos;
+        Eigen::Vector3d local_vel;
+        Eigen::Vector3d local_acc;
+        message::LegConfiguration conf;
+        traj.Sample(traj_beg_time_, local_pos, local_vel, local_acc, conf);
+
+        // The foot is swinging. Convert into global frame.
+        const FBState& stat = torso_traj_.Head();
+        pos = stat.state.trans + stat.state.rot * local_pos;
+        vel = stat.state.rot * (stat.state.linear_vel + local_vel
+                                + stat.state.rot_vel.cross(local_pos));
+        acc = stat.state.rot * (
+                    stat.linear_acc + local_acc
+                    - stat.state.rot_vel.squaredNorm() * local_pos
+                    + stat.rot_acc.cross(local_pos)
+                    + 2 * stat.state.rot_vel.cross(local_vel));
+        contact = false;
+
+        return;
+    }
+
+    // If the following lines are executed, it suggests either
+    // there is no swing trajectory for this foot or the swing
+    // trajectory has not yet begun at the sample time.
+    // So the foot has not moved in global frame.
+    pos = foot_pos_[foot_name];
+    vel.setZero();
+    acc.setZero();
+    contact = true;
+
+    return;
+}
+
 void TrajectoryController::GetLocalFootState(
         double t, message::LegName foot_name,
         Eigen::Vector3d &pos,
@@ -519,6 +566,9 @@ void TrajectoryController::Update()
     boost::shared_ptr<hardware::ClockBase> clock = clock_ptr_.lock();
     CHECK(clock) << "[TrajController] clock is not set!";
 
+    boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
+    CHECK(model) << "[TrajController] Model is not set!";
+
     const double cur_time = clock->Time();
 
     // remove outdated trajectory points
@@ -538,7 +588,9 @@ void TrajectoryController::Update()
     // remove a trajectory if it has been executed
     for (int i = 0; i < 4; i++)
     {
-        if (swing_traj_[i] && swing_traj_[i]->EndTime() < traj_beg_time_)
+        if (swing_traj_[i] && swing_traj_[i]->BeginTime() < traj_beg_time_
+                && swing_traj_[i]->DecideEnd(traj_beg_time_,
+                                             model->FootContact()[i]))
         {
             Eigen::Vector3d pos;
             Eigen::Vector3d vel;
@@ -548,6 +600,8 @@ void TrajectoryController::Update()
             foot_pos_[i] = beg_stat.state.trans + beg_stat.state.rot * pos;
 
             swing_traj_[i].reset();
+
+            LOG(DEBUG) << "traj " << i << " removed";
         }
     }
 }

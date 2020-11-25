@@ -9,6 +9,8 @@ namespace dog_control
 namespace physics
 {
 
+Eigen::Matrix3d GeneralInverse(const Eigen::Matrix3d& A);
+
 /**
  * @brief ToLowerMatrix
  * Get a matrix M that for any vector a,

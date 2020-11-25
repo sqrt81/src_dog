@@ -65,7 +65,18 @@ void ConfSpaceTraj::Sample(double t,
     Eigen::Vector3d jpos;
     Eigen::Vector3d jvel;
 
-    joint_traj_.Sample(t, jpos, jvel);
+    if (t < begin_time_)
+    {
+        joint_traj_.Sample(begin_time_, jpos, jvel);
+        jvel.setZero();
+    }
+    else if (t > end_time_)
+    {
+        joint_traj_.Sample(end_time_, jpos, jvel);
+        jvel.setZero();
+    }
+    else
+        joint_traj_.Sample(t, jpos, jvel);
 
     local_acc.setZero(); // don't know how to compute it
     local_pos = model_.ComputeLocalPos(leg_, jpos);
@@ -81,7 +92,7 @@ bool ConfSpaceTraj::DecideEnd(double t, bool in_contact)
 {
     (void) t;
 
-    return in_contact;
+    return in_contact && t > (begin_time_ + end_time_) / 2;
 }
 
 } /* control */
