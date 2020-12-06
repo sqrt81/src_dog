@@ -57,6 +57,8 @@ public:
 //    void SetFeetPose(const FeetPosSeq &feet_pos,
 //                     const FeetContactSeq &feet_contact);
 
+    virtual FBStateAcc GetTorsoState(double t) override;
+
     virtual void GetFeetForce(
             double t,
             std::array<Eigen::Vector3d, 4> &force,

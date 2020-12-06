@@ -270,18 +270,17 @@ Eigen::MatrixXd FloatingBaseModel::MassMatrix()
         f_i = X_parent_[i].transpose() * f_i
             + X_parent_rot_[i].transpose() * f_rot_i;
 
-        for (size_t j = i; j != 0;)
+        for (size_t j = parent_[i]; j != 0;)
         {
-            // Note that spatial force f_i is expressed in frame parent_[j].
-            // So in order to find the force needed for joint[parent_[j]],
-            // we needs joint_axis[parent_[j]] * f_i.
-            const int parent = parent_[j];
-            mass_matrix_(parent + 5, i + 5)
-                    = node_description_[parent].joint_axis.dot(f_i);
-            mass_matrix_(i + 5, parent + 5) = mass_matrix_(parent + 5, i + 5);
+            // Note that spatial force f_i is expressed in frame j.
+            // So in order to find the force needed for joint[j],
+            // we needs joint_axis[j] * f_i.
+            mass_matrix_(j + 5, i + 5)
+                    = node_description_[j].joint_axis.dot(f_i);
+            mass_matrix_(i + 5, j + 5) = mass_matrix_(j + 5, i + 5);
 
-            f_i = X_parent_[parent].transpose() * f_i;
-            j = parent;
+            f_i = X_parent_[j].transpose() * f_i;
+            j = parent_[j];
         }
 
         mass_matrix_.block<6, 1>(0, i + 5) = f_i;

@@ -366,6 +366,17 @@ void ModelPredictiveController::Update()
     last_update_time_ = clock->Time();
 }
 
+ModelPredictiveController::FBStateAcc
+ModelPredictiveController::GetTorsoState(double t)
+{
+    boost::shared_ptr<TrajectoryController> traj = traj_ptr_.lock();
+    CHECK(traj) << "[MPC] traj controller is not set!";
+
+    FBStateAcc state = traj->GetTorsoState(t);
+
+    return state;
+}
+
 void ModelPredictiveController::GetFeetForce(double t,
                   std::array<Eigen::Vector3d, 4> &force,
                   std::array<bool, 4> &contact) const

@@ -80,12 +80,16 @@ void ExtendedMPC::Initialize(utils::ParamDictCRef dict)
     for(unsigned int i = 1; i < pred_horizon; i++)
         state_weight_.segment<n_s>(i * n_s) = state_weight_.head<n_s>();
 
+    state_weight_.head<n_s>() = state_weight_.head<n_s>() * 10;
+
     update_dt_ = ReadParOrDie(dict, PARAM_WITH_NS(control_period, control));
     last_update_time_ = - 1.;
 
     A_.resize(pred_horizon, Eigen::MatrixXd::Zero(n_s, n_s));
     B_.resize(pred_horizon, Eigen::MatrixXd::Zero(n_s, n_f));
     C_.resize(pred_horizon, Eigen::VectorXd::Zero(n_s));
+    X_.resize(pred_horizon + 1, Eigen::VectorXd::Zero(n_s));
+
     Jvel_.resize(pred_horizon + 1, Eigen::VectorXd::Zero(n_j));
 
     Aqp_Bqp_ = Eigen::MatrixXd::Zero(pred_horizon * n_s,
@@ -98,9 +102,12 @@ void ExtendedMPC::Initialize(utils::ParamDictCRef dict)
                         Eigen::Vector3d::Zero(),
                         Eigen::Vector3d::Zero(),
                         Eigen::Vector3d::Zero()});
+    contact_seq_.resize(pred_horizon);
 
     G_.resize(pred_horizon * n_f, pred_horizon * n_f);
     g0_.resize(pred_horizon * n_f);
+
+    update_running_ = false;
 }
 
 void ExtendedMPC::Update()
@@ -112,6 +119,124 @@ void ExtendedMPC::Update()
 
     if(cur_time - last_update_time_ < update_period_)
         return;
+    else if (!update_running_)
+    {
+        update_thread_ = boost::thread(&ExtendedMPC::SyncUpdate, this);
+    }
+}
+
+void ExtendedMPC::GetFeetForce(
+        double t,
+        std::array<Eigen::Vector3d, 4> &force,
+        std::array<bool, 4> &contact) const
+{
+    double interval = std::max(t - last_update_time_, 0.);
+//    double interval = 0;
+
+    for (unsigned int i = 0; i < pred_interval_seq_.size(); i++)
+    {
+        interval -= pred_interval_seq_[i];
+
+        if (interval < 0)
+        {
+            force = foot_force_[i];
+            contact = contact_seq_[i];
+
+            return;
+        }
+    }
+
+    force = foot_force_.back();
+    contact = contact_seq_.back();
+}
+
+ExtendedMPC::FBStateAcc ExtendedMPC::GetTorsoState(double t)
+{
+    boost::shared_ptr<TrajectoryController> traj = traj_ptr_.lock();
+    CHECK(traj) << "[MPC] traj controller is not set!";
+
+    FBStateAcc state = traj->GetTorsoState(t);
+
+    double interval = std::max(t - last_update_time_, 0.);
+
+    for (unsigned int i = 0; i < pred_interval_seq_.size(); i++)
+    {
+        if (interval < pred_interval_seq_[i])
+        {
+            Eigen::Matrix<double, 6, 1> beg_vel = X_[i].tail<6>();
+            Eigen::Matrix<double, 6, 1> end_vel = X_[i + 1].tail<6>();
+            beg_vel.tail<3>() = state.state.rot * beg_vel.tail<3>();
+            end_vel.tail<3>() = state.state.rot * end_vel.tail<3>();
+
+            utils::CubicSpline<Eigen::Matrix<double, 6, 1>> spline(
+                        0, X_[i].head<6>(), beg_vel,
+                        pred_interval_seq_[i],
+                        X_[i + 1].head<6>(), end_vel);
+
+            Eigen::Matrix<double, 6, 1> pose;
+            Eigen::Matrix<double, 6, 1> vel;
+            Eigen::Matrix<double, 6, 1> acc;
+
+            spline.Sample(interval, pose, vel, acc);
+
+            state.state.rot *= physics::SO3ToQuat(pose.head<3>());
+            state.state.trans += pose.tail<3>();
+            state.state.rot_vel += vel.head<3>();
+            state.state.linear_vel
+                    += state.state.rot.conjugate() * vel.tail<3>();
+            state.rot_acc += acc.head<3>();
+            state.linear_acc
+                    += state.state.rot.conjugate() * acc.tail<3>();
+
+            break;
+        }
+
+        interval -= pred_interval_seq_[i];
+    }
+
+    return state;
+}
+
+void ExtendedMPC::Simulate()
+{
+//    LOG(DEBUG) << "B0: " << std::endl
+//               << B_[0];
+//    LOG(DEBUG) << "F0: "
+//               << pred_force_.tail<n_f>().transpose();
+
+    LOG(DEBUG) << "step " << 0 << " contact " << contact_seq_[0][0];
+    LOG(DEBUG) << "state " << X_[0](0) << "\t " << X_[0](6);
+
+    const unsigned int pred_horizon = pred_interval_seq_.size();
+    X_[1] = C_[0] + B_[0] * pred_force_.tail<n_f>();
+
+    for (unsigned i = 1; i < pred_horizon; i++)
+    {
+
+        const Eigen::Matrix<double, n_s, 1> dstate
+                = B_[i] * pred_force_.segment<n_f>
+                ((pred_horizon - i - 1) * n_f);
+
+        if (i < 5)
+        {
+            LOG(DEBUG) << "step " << i << " contact " << contact_seq_[i][0];
+            LOG(DEBUG) << "state " << X_[i](0) << "\t " << X_[i](6);
+//            LOG(DEBUG) << "dstate " << dstate(0) << "\t " << dstate(6);
+//            LOG(DEBUG) << "bias " << C_[i](0) << "\t " << C_[i](6);
+        }
+
+        X_[i + 1] = A_[i] * X_[i] + dstate + C_[i];
+    }
+}
+
+void ExtendedMPC::SyncUpdate()
+{
+    update_running_ = true;
+
+    boost::shared_ptr<hardware::ClockBase> clock = clock_ptr_.lock();
+    CHECK(clock) << "[MPC] clock is not set!";
+
+    const double cur_time = clock->Time();
 
     boost::shared_ptr<TrajectoryController> traj = traj_ptr_.lock();
     CHECK(traj) << "[MPC] traj controller is not set!";
@@ -252,11 +377,11 @@ void ExtendedMPC::Update()
             jacob.computeInverseWithCheck(
                         inv_jacob, invertable, utils::precision);
 
-            if (invertable)
-            {
-                middle_jvel.segment<3>(j * 3) = inv_jacob * ft_vel;
-            }
-            else
+//            if (invertable)
+//            {
+//                middle_jvel.segment<3>(j * 3) = inv_jacob * ft_vel;
+//            }
+//            else
             {
                 middle_jvel.segment<3>(j * 3)
                         = (Jvel_[i].segment<3>(j * 3)
@@ -278,6 +403,10 @@ void ExtendedMPC::Update()
 
         desired_acc /= pred_interval;
 
+        desired_acc.segment<3>(0) = traj->GetTorsoState(middle_time).rot_acc;
+        desired_acc.segment<3>(3)
+                = traj->GetTorsoState(middle_time).linear_acc;
+
         const Eigen::Vector3d interval_gravity = rot_interval * gravity_;
         desired_acc.segment<3>(3) -= interval_gravity;
 
@@ -285,14 +414,20 @@ void ExtendedMPC::Update()
         const physics::spatial::SMat inv_H
                 = pred_model_->MassMatrix().topLeftCorner<6, 6>().inverse();
 
-        // force_desired is the total force needed in desired trajectory.
+        // force_desired is the total force needed to
+        // execute the desired trajectory.
         const physics::spatial::SVec force_desired
                 = pred_model_->MassMatrix().topRows<6>() * desired_acc
                 + pred_model_->BiasForces().head<6>();
+
+        desired_acc.segment<3>(0).setZero();
+        desired_acc.segment<3>(3) = - interval_gravity;
+        // bias_desired is the spatial force needed
+        // for zero torso acceleration.
         const physics::spatial::SVec bias_desired
-                = pred_model_->BiasForces().head<6>()
-                - pred_model_->MassMatrix().block<6, 3>(0, 3)
-                * interval_gravity;
+                = pred_model_->MassMatrix().topRows<6>() * desired_acc
+                + pred_model_->BiasForces().head<6>();
+
         // base_jacob is base bias force's jacobian wrt velocity.
         const physics::spatial::SMat base_jacob
                 = pred_model_->BaseForceJacobian();
@@ -322,8 +457,10 @@ void ExtendedMPC::Update()
                 * (pred_interval * 0.5);
 
         Ai.setZero();
-        Ai.block<3, 3>(0, 0) = rel_rot;
-        Ai.block<3, 3>(0, 6) = rel_rot * pred_interval;
+//        Ai.block<3, 3>(0, 0) = rel_rot;
+//        Ai.block<3, 3>(0, 6) = rel_rot * pred_interval;
+        Ai.block<3, 3>(0, 0).setIdentity();
+        Ai.block<3, 3>(0, 6).diagonal().setConstant(pred_interval);
         Ai.block<3, 3>(3, 0) = - physics::ToLowerMatrix(delta_pos) * rot;
         Ai.block<3, 3>(3, 3).setIdentity();
         Ai.block<3, 3>(3, 9) = rot * pred_interval;
@@ -349,11 +486,23 @@ void ExtendedMPC::Update()
         }
 
         Ci.noalias() = - trans * bias_desired;
-        Ci.segment<3>(0) += rel_rot
-                * (this_state.rot_vel + next_state.rot_vel)
-                * (pred_interval * 0.5)
-                + physics::QuatToSO3(
-                    next_state.rot.conjugate() * this_state.rot);
+
+        if (i == 0)
+        {
+//            LOG(DEBUG) << "bias f   : " << bias_desired.transpose();
+//            LOG(DEBUG) << "bias acc : " << (inv_H * bias_desired).transpose();
+//            LOG(DEBUG) << "bias col : " << pred_model_->BiasForces().head<6>()
+//                          .transpose();
+//            LOG(DEBUG) << "Ci : " << Ci.transpose();
+//            LOG(DEBUG) << "H: " << pred_model_->MassMatrix().block<1, 12>(0, 6);
+//            LOG(DEBUG) << "inv H: " << std::endl << inv_H;
+//            LOG(DEBUG) << "H: " << pred_model_->MassMatrix().block<1, 6>(9, 0);
+        }
+
+        Ci.segment<3>(0) += physics::QuatToSO3(
+                    next_state.rot.conjugate() * this_state.rot)
+                + rel_rot * (this_state.rot_vel + next_state.rot_vel)
+                * (pred_interval * 0.5);
         Ci.segment<3>(3) += this_state.trans - next_state.trans + delta_pos;
         Ci.segment<3>(6) += this_state.rot_vel - next_state.rot_vel;
         Ci.segment<3>(9) += this_state.linear_vel - next_state.linear_vel;
@@ -369,10 +518,10 @@ void ExtendedMPC::Update()
     {
         // add difference of X0 into C_[0]
         FBSCRef des_x0 = desired_traj_[0];
-        Eigen::Matrix<double, n_s, 1> X0;
         const Eigen::Quaterniond rot_diff
                 = des_x0.rot.conjugate() * cur_state_.rot;
 
+        Eigen::VectorXd& X0 = X_[0];
         X0.segment<3>(0) = physics::QuatToSO3(rot_diff);
         X0.segment<3>(3) = cur_state_.trans - des_x0.trans;
         X0.segment<3>(6) = cur_state_.rot_vel - des_x0.rot_vel;
@@ -467,7 +616,11 @@ void ExtendedMPC::Update()
         }
     }
 
-    optimization::SolveQuadProg(G_, g0_, CE, ce0, CI, ci0, pred_force_);
+    const double res = optimization::SolveQuadProg(G_, g0_, CE, ce0,
+                                                   CI, ci0, pred_force_);
+
+    if (res > 100000.)
+        LOG(WARN) << "optimization failed";
 
     for (unsigned int i = 0; i < pred_horizon; i++)
     {
@@ -479,6 +632,12 @@ void ExtendedMPC::Update()
         force_i[2] = pred_force_.segment<3>(i * n_f + 6);
         force_i[3] = pred_force_.segment<3>(i * n_f + 9);
     }
+
+    Simulate();
+    LOG(DEBUG) << "force fl " << foot_force_[0][0].transpose();
+    LOG(DEBUG) << "force fr " << foot_force_[0][1].transpose();
+    LOG(DEBUG) << "force bl " << foot_force_[0][2].transpose();
+    LOG(DEBUG) << "force br " << foot_force_[0][3].transpose();
 
 //    for (unsigned i = 0; i < pred_horizon; i++)
 //    {
@@ -493,33 +652,10 @@ void ExtendedMPC::Update()
 //                   << " force " << foot_force_[i][3].transpose();
 //    }
 
-//    LOG(DEBUG) << "";
+    LOG(DEBUG) << std::endl;
 
     last_update_time_ = cur_time;
-}
-
-void ExtendedMPC::GetFeetForce(
-        double t,
-        std::array<Eigen::Vector3d, 4> &force,
-        std::array<bool, 4> &contact) const
-{
-    double interval = std::max(t - last_update_time_, 0.);
-
-    for (unsigned int i = 0; i < pred_interval_seq_.size(); i++)
-    {
-        interval -= pred_interval_seq_[i];
-
-        if (interval < 0)
-        {
-            force = foot_force_[i];
-            contact = contact_seq_[i];
-
-            return;
-        }
-    }
-
-    force = foot_force_.back();
-    contact = contact_seq_.back();
+    update_running_ = false;
 }
 
 } /* control */

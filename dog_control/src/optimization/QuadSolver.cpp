@@ -11,6 +11,8 @@ namespace optimization
 namespace
 {
 
+constexpr int MAX_ITERATION = 100;
+
 inline double fabs_f(double x)
 {
     return x > 0 ? x : -x;
@@ -207,6 +209,7 @@ double SolveQuadProg(const Eigen::MatrixXd& G, const Eigen::VectorXd& g0,
     x.resize(n);
 
     int i; /* index */
+    int iter = 0; /* expire counter */
 
     /* this is the index of the constraint to be added to the active set */
     int ip;
@@ -363,6 +366,12 @@ l2: /* Step 2: check for feasibility and determine a new S-pair */
     A[iq] = ip;
 
 l2a:/* Step 2a: determine step direction */
+
+    iter++;
+
+    if (iter > MAX_ITERATION)
+        return inf;
+
     /* compute z = H np: the step direction in the primal space
      * (through J, see the paper) */
     compute_d(d, J, np);

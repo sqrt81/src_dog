@@ -160,7 +160,8 @@ void WholeBodyController::Update()
 
     boost::shared_ptr<control::TrajectoryController> traj = traj_ptr_.lock();
     CHECK(traj) << "[WBC] traj is not set!";
-    torso_task_ = traj->GetTorsoState(cur_time);
+//    torso_task_ = traj->GetTorsoState(cur_time);
+    torso_task_ = mpc->GetTorsoState(cur_time);
 
     boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
     CHECK(model) << "[WBC] Model is not set!";
@@ -175,11 +176,12 @@ void WholeBodyController::Update()
 
     for (int i = 0; i < 4; i++)
     {
+        bool contact_holder;
         traj->GetCurFootState(static_cast<message::LegName>(i),
                               foot_state_task_[i].pos,
                               foot_state_task_[i].vel,
                               foot_acc_task_[i],
-                              foot_contact_[i]);
+                              contact_holder/*foot_contact_[i]*/);
 
         if (!foot_contact_[i])
         {
@@ -243,11 +245,11 @@ void WholeBodyController::Update()
 
         if (foot_contact_[i])
         {
-            a_cmd = foot_acc_task_[i]
-                    + kp_foot_Cartesian_
-                    * (foot_state_task_[i].pos - model->FootPos(leg))
-                    + kd_foot_Cartesian_
-                    * (foot_state_task_[i].vel - model->FootVel(leg));
+            a_cmd = foot_acc_task_[i];
+//                    + kp_foot_Cartesian_
+//                    * (foot_state_task_[i].pos - model->FootPos(leg))
+//                    + kd_foot_Cartesian_
+//                    * (foot_state_task_[i].vel - model->FootVel(leg));
 
             // a = J * aq + VJ * vq
             // = J_leg * aq_leg + VJ * vq + J_base * aq_base

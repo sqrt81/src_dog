@@ -48,6 +48,8 @@ public:
         model_ptr_ = model;
     }
 
+    virtual FBStateAcc GetTorsoState(double t) = 0;
+
     virtual void GetFeetForce(
             double t,
             std::array<Eigen::Vector3d, 4> &force,

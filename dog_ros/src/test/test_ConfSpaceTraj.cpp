@@ -116,8 +116,8 @@ int test_ConfSpaceTraj(int argc, char** argv)
     message::LegConfiguration conf;
     conf.hip_outwards = true;
     conf.knee_outwards = true;
-    conf.kd = 1;
-    conf.kp = 3;
+    conf.kd = 0.1;
+    conf.kp = 0.3;
 
     for (int i = 0; i < 4; i++)
     {
@@ -141,7 +141,7 @@ int test_ConfSpaceTraj(int argc, char** argv)
 
         state.stamp = clock->Time() + 0.5;
         state.state.trans = {- 0.05, - 0.05, 0.25};
-        state.state.rot = Eigen::Quaterniond::Identity();
+        state.state.rot = Eigen::AngleAxisd(0.2, Eigen::Vector3d(1, 0, 0));
         state.state.linear_vel = Eigen::Vector3d::Zero();
         state.state.rot_vel = Eigen::Vector3d::Zero();
         torso_traj.push_back(state);
@@ -239,7 +239,7 @@ int test_ConfSpaceTraj(int argc, char** argv)
             {
                 message::StampedFloatingBaseState state;
                 state.state.trans = {- 0.05, - 0.05, 0.25};
-                state.state.rot = Eigen::Quaterniond::Identity();
+                state.state.rot = Eigen::AngleAxisd(0.2, Eigen::Vector3d(1, 0, 0));
                 state.state.linear_vel = Eigen::Vector3d::Zero();
                 state.state.rot_vel = Eigen::Vector3d::Zero();
                 state.stamp = sample_time;

@@ -3,6 +3,8 @@
 
 #include "dog_control/control/MPCBase.h"
 
+#include "boost/thread.hpp"
+
 namespace dog_control
 {
 
@@ -16,6 +18,8 @@ public:
 
     virtual void Initialize(utils::ParamDictCRef dict) override;
 
+    virtual FBStateAcc GetTorsoState(double t) override;
+
     virtual void GetFeetForce(
             double t,
             std::array<Eigen::Vector3d, 4> &force,
@@ -24,7 +28,14 @@ public:
     virtual void Update() override;
 
 protected:
+    void Simulate();
+
+    void SyncUpdate();
+
     boost::shared_ptr<physics::SimDogModel> pred_model_;
+
+    bool update_running_;
+    boost::thread update_thread_;
 
     // pred_horizon_ and pred_interval_ are deprecated.
     // Instead, ExtendedMPC use intervals of difference length.
@@ -35,6 +46,7 @@ protected:
     std::vector<Eigen::MatrixXd> A_;
     std::vector<Eigen::MatrixXd> B_;
     std::vector<Eigen::VectorXd> C_; // bias
+    std::vector<Eigen::VectorXd> X_;
 
     // desired joint vel at sample points
     std::vector<Eigen::VectorXd> Jvel_;

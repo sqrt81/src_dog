@@ -110,7 +110,7 @@ void RvizVisualization::Update()
                                 marker.pose.position);
             tf::quaternionEigenToMsg(Eigen::Quaterniond::FromTwoVectors(
                                          Eigen::Vector3d::UnitX(),
-                                         data_->foot_force[i]),
+                                         data_->foot_force[i]).normalized(),
                                      marker.pose.orientation);
             marker.scale.x = data_->foot_force[i].norm() * 0.01;
             marker.scale.y = 0.01;

@@ -187,7 +187,7 @@ int test_HalfFlip(int argc, char** argv)
             vis_data.cur_pose.linear_vel = est.linear_vel;
             vis_data.cur_pose.rot_vel = est.rot_vel;
 
-            traj->SampleTrajFromNow(4, 0.1, vis_data.torso_traj);
+            traj->SampleTrajFromNow(1, 0.1, vis_data.torso_traj);
             Eigen::Vector3d pos;
 
             for (int j = 0; j < 4; j++)
@@ -211,6 +211,8 @@ int test_HalfFlip(int argc, char** argv)
 //    constexpr double t = duration / 1000.;
 
     iter = 0;
+
+    Eigen::Vector3d force[4];
 
     while (ros::ok())
     {
@@ -258,7 +260,7 @@ int test_HalfFlip(int argc, char** argv)
         hw->PublishCommand(*cmd);
 
         // update visualization data
-        if (iter % 20 == 0)
+        if (iter % 10 == 0)
         {
             auto est = estimator->GetResult();
 //            auto est = estimator->GetResult();
@@ -267,7 +269,7 @@ int test_HalfFlip(int argc, char** argv)
             vis_data.cur_pose.linear_vel = est.linear_vel;
             vis_data.cur_pose.rot_vel = est.rot_vel;
 
-            traj->SampleTrajFromNow(4, 0.1, vis_data.torso_traj);
+            traj->SampleTrajFromNow(1, 0.1, vis_data.torso_traj);
             Eigen::Vector3d pos;
 
             for (int j = 0; j < 4; j++)
@@ -280,7 +282,27 @@ int test_HalfFlip(int argc, char** argv)
 
             vis_data.foot_force = est.foot_force;
 
+            LOG(DEBUG) << "real fl: " << force[0].transpose() / 10;
+            LOG(DEBUG) << "real fr: " << force[1].transpose() / 10;
+            LOG(DEBUG) << "real bl: " << force[2].transpose() / 10;
+            LOG(DEBUG) << "real br: " << force[3].transpose() / 10;
+            LOG(DEBUG) << "real rot: " << est.rot_vel.x();
+            LOG(DEBUG) << "des  rot: " << vis_data.torso_traj[0].rot_vel.x();
+
+            force[0].setZero();
+            force[1].setZero();
+            force[2].setZero();
+            force[3].setZero();
+
             vis.Update();
+        }
+
+        {
+            auto est = estimator->GetResult();
+            force[0] += est.foot_force[0];
+            force[1] += est.foot_force[1];
+            force[2] += est.foot_force[2];
+            force[3] += est.foot_force[3];
         }
 
         r.sleep();
@@ -337,7 +359,7 @@ int test_HalfFlip(int argc, char** argv)
             vis_data.cur_pose.linear_vel = est.linear_vel;
             vis_data.cur_pose.rot_vel = est.rot_vel;
 
-            traj->SampleTrajFromNow(4, 0.1, vis_data.torso_traj);
+            traj->SampleTrajFromNow(1, 0.1, vis_data.torso_traj);
             Eigen::Vector3d pos;
 
             for (int j = 0; j < 4; j++)

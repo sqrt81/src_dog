@@ -276,7 +276,7 @@ void TrajectoryController::GetLocalFootState(
     {
         pos = cur_state.rot.conjugate()
                 * (foot_pos_[foot_name] - cur_state.trans);
-        vel = - cur_state.linear_vel;
+        vel = - cur_state.linear_vel - cur_state.rot_vel.cross(pos);
 
         // leg configuration is only modified during swinging
         (void) conf;
