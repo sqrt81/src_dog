@@ -61,7 +61,7 @@ Eigen::Vector3d QuatToSO3(const Eigen::Quaterniond &quat)
     const double theta = 2.0 * asin(norm);
 
     if (abs(theta) > 1e-6)
-        so3 *= theta / norm;
+        so3 *= theta / norm * (quat.w() > 0 ? 1 : - 1);
     else
         so3.setZero();
 
