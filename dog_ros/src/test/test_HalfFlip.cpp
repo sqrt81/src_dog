@@ -99,8 +99,10 @@ int test_HalfFlip(int argc, char** argv)
 
     half_flip->ConnectTraj(traj);
     half_flip->ConnectFoot(foot_ctrl);
+    half_flip->ConnectMPC(mpc);
     half_flip->ConnectClock(clock);
     half_flip->ConnectModel(model);
+    half_flip->GetDict(dict);
 
     // spin to update hardware and time
     for (int i = 0; i < 10; i++)
@@ -218,8 +220,8 @@ int test_HalfFlip(int argc, char** argv)
     {
         iter++;
 
-        if (iter > duration)
-            break;
+//        if (iter > duration)
+//            break;
 
 //        if (iter == 400)
 //        {
@@ -260,7 +262,7 @@ int test_HalfFlip(int argc, char** argv)
         hw->PublishCommand(*cmd);
 
         // update visualization data
-        if (iter % 10 == 0)
+        if (iter % 20 == 0)
         {
             auto est = estimator->GetResult();
 //            auto est = estimator->GetResult();
@@ -269,7 +271,7 @@ int test_HalfFlip(int argc, char** argv)
             vis_data.cur_pose.linear_vel = est.linear_vel;
             vis_data.cur_pose.rot_vel = est.rot_vel;
 
-            traj->SampleTrajFromNow(1, 0.1, vis_data.torso_traj);
+            traj->SampleTrajFromNow(4, 0.1, vis_data.torso_traj);
             Eigen::Vector3d pos;
 
             for (int j = 0; j < 4; j++)
@@ -282,12 +284,11 @@ int test_HalfFlip(int argc, char** argv)
 
             vis_data.foot_force = est.foot_force;
 
-            LOG(DEBUG) << "real fl: " << force[0].transpose() / 10;
-            LOG(DEBUG) << "real fr: " << force[1].transpose() / 10;
-            LOG(DEBUG) << "real bl: " << force[2].transpose() / 10;
-            LOG(DEBUG) << "real br: " << force[3].transpose() / 10;
-            LOG(DEBUG) << "real rot: " << est.rot_vel.x();
-            LOG(DEBUG) << "des  rot: " << vis_data.torso_traj[0].rot_vel.x();
+//            LOG(DEBUG) << "real fl: " << force[0].transpose() / 20;
+//            LOG(DEBUG) << "real fr: " << force[1].transpose() / 20;
+//            LOG(DEBUG) << "real bl: " << force[2].transpose() / 20;
+//            LOG(DEBUG) << "real br: " << force[3].transpose() / 20;
+//            LOG(DEBUG) << "";
 
             force[0].setZero();
             force[1].setZero();
@@ -303,6 +304,11 @@ int test_HalfFlip(int argc, char** argv)
             force[1] += est.foot_force[1];
             force[2] += est.foot_force[2];
             force[3] += est.foot_force[3];
+//            LOG(DEBUG) << "real rot: " << est.rot_vel.x();
+//            LOG(DEBUG) << "des  rot: "
+//                       << traj->GetTorsoState(clock->Time()).state.rot_vel.x();
+//            LOG(DEBUG) << "joint vel" << model->Vq().tail<12>().transpose();
+//            LOG(DEBUG) << std::endl;
         }
 
         r.sleep();
@@ -351,7 +357,7 @@ int test_HalfFlip(int argc, char** argv)
         hw->PublishCommand(*cmd);
 
         // update visualization data
-        if (iter % 10 == 0)
+        if (iter % 20 == 0)
         {
             auto est = estimator->GetResult();
             vis_data.cur_pose.rot = est.orientation;
@@ -359,7 +365,7 @@ int test_HalfFlip(int argc, char** argv)
             vis_data.cur_pose.linear_vel = est.linear_vel;
             vis_data.cur_pose.rot_vel = est.rot_vel;
 
-            traj->SampleTrajFromNow(1, 0.1, vis_data.torso_traj);
+            traj->SampleTrajFromNow(4, 0.1, vis_data.torso_traj);
             Eigen::Vector3d pos;
 
             for (int j = 0; j < 4; j++)

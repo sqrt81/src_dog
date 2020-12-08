@@ -14,7 +14,7 @@ namespace control
 class ExtendedMPC : public MPCBase
 {
 public:
-    ExtendedMPC() = default;
+    ExtendedMPC() : update_running_(false) {};
 
     virtual void Initialize(utils::ParamDictCRef dict) override;
 
@@ -40,6 +40,8 @@ protected:
     // pred_horizon_ and pred_interval_ are deprecated.
     // Instead, ExtendedMPC use intervals of difference length.
     std::vector<double> pred_interval_seq_;
+
+    double force_diff_w_;
 
     // system matrixs
     // X_(k + 1) = A_k * X_k + B_k * F_k + C_k

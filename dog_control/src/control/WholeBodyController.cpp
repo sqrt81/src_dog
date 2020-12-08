@@ -161,7 +161,7 @@ void WholeBodyController::Update()
     boost::shared_ptr<control::TrajectoryController> traj = traj_ptr_.lock();
     CHECK(traj) << "[WBC] traj is not set!";
 //    torso_task_ = traj->GetTorsoState(cur_time);
-    torso_task_ = mpc->GetTorsoState(cur_time);
+    torso_task_ = traj->GetTorsoState(cur_time);
 
     boost::shared_ptr<physics::DogModel> model = model_ptr_.lock();
     CHECK(model) << "[WBC] Model is not set!";
@@ -319,6 +319,16 @@ void WholeBodyController::Update()
               * aq.tail<n_j - n_s>()
             + force_bias_.tail<n_j - n_s>()
             - model->Friction();
+
+//    LOG(DEBUG) << "aq: " << res_opt.head<n_s>().transpose();
+//    LOG(DEBUG) << "ref fl: " << ref_force_[0].transpose();
+//    LOG(DEBUG) << "ref fr: " << ref_force_[1].transpose();
+//    LOG(DEBUG) << "ref bl: " << ref_force_[2].transpose();
+//    LOG(DEBUG) << "ref br: " << ref_force_[3].transpose();
+//    LOG(DEBUG) << "act fl: " << res_opt.segment<3>(n_s).transpose();
+//    LOG(DEBUG) << "act fr: " << res_opt.segment<3>(n_s + 3).transpose();
+//    LOG(DEBUG) << "act bl: " << res_opt.segment<3>(n_s + 6).transpose();
+//    LOG(DEBUG) << "act br: " << res_opt.segment<3>(n_s + 9).transpose();
 
 //    torq.setZero();
 

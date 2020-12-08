@@ -470,7 +470,16 @@ void TrajectoryController::SampleFootStateFromNow(
                 message::LegConfiguration conf;
                 traj[j]->Sample(t, local_pos, local_vel, local_acc, conf);
 
-                if (t > traj[j]->EndTime())
+                if (i == 0)
+                {
+                    // special case for current state
+                    // since the trajectory is available and already begun
+                    // currently the foot is absolutely NOT in contact.
+                    pos_seq[i][j] = cur_stat.state.trans
+                                  + cur_stat.state.rot * local_pos;
+                    contact_seq[i][j] = false;
+                }
+                else if (t > traj[j]->EndTime())
                 {
                     // swing finished
                     const FBState& end_stat
@@ -533,7 +542,16 @@ void TrajectoryController::SampleFootStateFromNow(
                 traj[j]->Sample(cur_time, local_pos, local_vel, local_acc,
                                 conf);
 
-                if (cur_time > traj[j]->EndTime())
+                if (i == 0)
+                {
+                    // special case for current state
+                    // since the trajectory is available and already begun
+                    // currently the foot is absolutely NOT in contact.
+                    pos_seq[i][j] = cur_stat.state.trans
+                                  + cur_stat.state.rot * local_pos;
+                    contact_seq[i][j] = false;
+                }
+                else if (cur_time > traj[j]->EndTime())
                 {
                     // swing finished
                     const FBState& end_stat
@@ -600,8 +618,6 @@ void TrajectoryController::Update()
             foot_pos_[i] = beg_stat.state.trans + beg_stat.state.rot * pos;
 
             swing_traj_[i].reset();
-
-            LOG(DEBUG) << "traj " << i << " removed";
         }
     }
 }

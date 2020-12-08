@@ -76,6 +76,8 @@ void ExtendedMPC::Initialize(utils::ParamDictCRef dict)
     state_weight_.segment<3>(9).setConstant(
                 ReadParOrDie(dict, PARAM_WITH_NS(vel_w, control/MPC)));
     force_weight_ = ReadParOrDie(dict, PARAM_WITH_NS(force_w, control/MPC));
+    force_diff_w_ = ReadParOrDie(dict, PARAM_WITH_NS(force_diff_w,
+                                                     control/ExtendedMPC));
 
     for(unsigned int i = 1; i < pred_horizon; i++)
         state_weight_.segment<n_s>(i * n_s) = state_weight_.head<n_s>();
@@ -106,6 +108,9 @@ void ExtendedMPC::Initialize(utils::ParamDictCRef dict)
 
     G_.resize(pred_horizon * n_f, pred_horizon * n_f);
     g0_.resize(pred_horizon * n_f);
+
+    if (update_running_)
+        update_thread_.join();
 
     update_running_ = false;
 }
@@ -204,8 +209,8 @@ void ExtendedMPC::Simulate()
 //    LOG(DEBUG) << "F0: "
 //               << pred_force_.tail<n_f>().transpose();
 
-    LOG(DEBUG) << "step " << 0 << " contact " << contact_seq_[0][0];
-    LOG(DEBUG) << "state " << X_[0](0) << "\t " << X_[0](6);
+//    LOG(DEBUG) << "step " << 0 << " contact " << contact_seq_[0][0];
+//    LOG(DEBUG) << "state " << X_[0](0) << "\t " << X_[0](6);
 
     const unsigned int pred_horizon = pred_interval_seq_.size();
     X_[1] = C_[0] + B_[0] * pred_force_.tail<n_f>();
@@ -219,8 +224,8 @@ void ExtendedMPC::Simulate()
 
         if (i < 5)
         {
-            LOG(DEBUG) << "step " << i << " contact " << contact_seq_[i][0];
-            LOG(DEBUG) << "state " << X_[i](0) << "\t " << X_[i](6);
+//            LOG(DEBUG) << "step " << i << " contact " << contact_seq_[i][0];
+//            LOG(DEBUG) << "state " << X_[i](0) << "\t " << X_[i](6);
 //            LOG(DEBUG) << "dstate " << dstate(0) << "\t " << dstate(6);
 //            LOG(DEBUG) << "bias " << C_[i](0) << "\t " << C_[i](6);
         }
@@ -499,6 +504,13 @@ void ExtendedMPC::SyncUpdate()
 //            LOG(DEBUG) << "H: " << pred_model_->MassMatrix().block<1, 6>(9, 0);
         }
 
+//        LOG(DEBUG) << "step " << i;
+//        LOG(DEBUG) << "contact: " << contact_seq_[i][0] << "\t "
+//                   << contact_seq_[i][1] << "\t "
+//                   << contact_seq_[i][2] << "\t "
+//                   << contact_seq_[i][3];
+//        LOG(DEBUG) << "des ori" << desired_traj_[i].rot.coeffs().transpose();
+
         Ci.segment<3>(0) += physics::QuatToSO3(
                     next_state.rot.conjugate() * this_state.rot)
                 + rel_rot * (this_state.rot_vel + next_state.rot_vel)
@@ -560,7 +572,13 @@ void ExtendedMPC::SyncUpdate()
     }
 
     G_ = Aqp_Bqp_.transpose() * state_weight_.asDiagonal() * Aqp_Bqp_;
-    G_.diagonal().array() += force_weight_;
+    G_.diagonal().array() += force_weight_ + force_diff_w_ * 2;
+    G_.diagonal().head<n_f>().array() -= force_diff_w_;
+    G_.diagonal().tail<n_f>().array() -= force_diff_w_;
+    G_.topLeftCorner((pred_horizon - 1) * n_f, (pred_horizon - 1) * n_f)
+            .diagonal().array() -= force_diff_w_;
+    G_.bottomRightCorner((pred_horizon - 1) * n_f, (pred_horizon - 1) * n_f)
+            .diagonal().array() -= force_diff_w_;
     g0_ = Aqp_Bqp_.transpose() * state_weight_.cwiseProduct(Aqp_Cqp_);
 
     // Build constraints
@@ -634,10 +652,10 @@ void ExtendedMPC::SyncUpdate()
     }
 
     Simulate();
-    LOG(DEBUG) << "force fl " << foot_force_[0][0].transpose();
-    LOG(DEBUG) << "force fr " << foot_force_[0][1].transpose();
-    LOG(DEBUG) << "force bl " << foot_force_[0][2].transpose();
-    LOG(DEBUG) << "force br " << foot_force_[0][3].transpose();
+//    LOG(DEBUG) << "force fl " << foot_force_[0][0].transpose();
+//    LOG(DEBUG) << "force fr " << foot_force_[0][1].transpose();
+//    LOG(DEBUG) << "force bl " << foot_force_[0][2].transpose();
+//    LOG(DEBUG) << "force br " << foot_force_[0][3].transpose();
 
 //    for (unsigned i = 0; i < pred_horizon; i++)
 //    {
@@ -652,7 +670,9 @@ void ExtendedMPC::SyncUpdate()
 //                   << " force " << foot_force_[i][3].transpose();
 //    }
 
-    LOG(DEBUG) << std::endl;
+//    LOG(DEBUG) << "rot    : " << desired_traj_[0].rot.coeffs().transpose();
+//    LOG(DEBUG) << "rot vel: " << desired_traj_[0].rot_vel.transpose();
+//    LOG(DEBUG) << std::endl;
 
     last_update_time_ = cur_time;
     update_running_ = false;
