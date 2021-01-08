@@ -5,17 +5,19 @@
   <!-- these are the arguments you can pass this launch file, for example paused:=true -->
   <arg name="paused" default="false"/>
   <arg name="use_sim_time" default="true"/>
-  <arg name="gui" default="false"/>
+  <arg name="gzb_gui" default="false"/>
   <arg name="headless" default="false"/>
   <arg name="debug" default="false"/>
   <arg name="world_name" default="$(find dog_model)/worlds/low_speed.world"/>
+  
   <arg name="hang_up" default="false" />
+  <arg name="add_tail" default="false" />
 
   <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(arg world_name)"/>
     <arg name="debug" value="$(arg debug)" />
-    <arg name="gui" value="$(arg gui)" />
+    <arg name="gui" value="$(arg gzb_gui)" />
     <arg name="paused" value="$(arg paused)"/>
     <arg name="use_sim_time" value="$(arg use_sim_time)"/>
     <arg name="headless" value="$(arg headless)"/>
@@ -23,7 +25,9 @@
 
   <!-- Load the URDF into the ROS Parameter Server -->
   <param name="robot_description"
-    command="$(find xacro)/xacro $(find dog_model)/urdf/dog.xacro hang_up:=$(arg hang_up)" />
+    command=
+    "$(find xacro)/xacro $(find dog_model)/urdf/robot.xacro
+     hang_up:=$(arg hang_up) add_tail:=$(arg add_tail)" />
 
   <!-- Run a python script to the send a service call to gazebo_ros to spawn a URDF robot -->
   <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
@@ -34,16 +38,17 @@
 	respawn="false" output="screen">
     <remap from="/joint_states" to="/dog/joint_states" />
   </node>
-  
+
   <!-- Prepare controllers and joint state publishers -->
   <include file="$(find dog_model)/launch/load_controller.launch">
+    <arg name="add_tail" value="$(arg add_tail)" />
   </include>
-  
+
   <node pkg="dog_model" type="Odom2TF.py" name="odom_to_tf">
     <remap from="odom" to="/ground_truth/state" />
   </node>
-  
-  <node unless="$(arg gui)" name="rviz" pkg="rviz" type="rviz" 
+
+  <node unless="$(arg gzb_gui)" name="rviz" pkg="rviz" type="rviz" 
     args=" -d $(find dog_model)/urdf.rviz" />
 
 </launch>

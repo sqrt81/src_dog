@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+
+<robot
+    xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:macro name="tail_gazebo_config">
+
+        <xacro:macro name="EnableSelfCollide" params="link">
+            <gazebo reference="${link}">
+                <selfCollide>true</selfCollide>
+                <kp>1000000.0</kp>
+                <kd>100.0</kd>
+            </gazebo>
+        </xacro:macro>
+
+        <xacro:macro name="AddTrans" params="joint id">
+            <transmission name="trans${id}">
+                <type>transmission_interface/SimpleTransmission</type>
+                <joint name="${joint}">
+                    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                </joint>
+                <actuator name="motor${id}">
+                    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                    <mechanicalReduction>1</mechanicalReduction>
+                </actuator>
+            </transmission>
+        </xacro:macro>
+
+        <xacro:EnableSelfCollide link="tail_root" />
+        <xacro:EnableSelfCollide link="tail_mid" />
+        <xacro:EnableSelfCollide link="tail_end" />
+
+        <xacro:AddTrans joint="tail_root_joint" id="13" />
+        <xacro:AddTrans joint="tail_mid_joint" id="14" />
+        <xacro:AddTrans joint="tail_end_joint" id="15" />
+
+    </xacro:macro>
+
+</robot>
+

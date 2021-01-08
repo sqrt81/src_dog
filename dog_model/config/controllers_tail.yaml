@@ -1,0 +1,23 @@
+dog:
+  joint_state_controller:
+    type: joint_state_controller/JointStateController
+    publish_rate: 1000
+  gazebo_pve_controller:
+    type: effort_controllers/GazeboPVEController
+    joints:
+      - fl_hip_x
+      - fl_hip_y
+      - fl_knee
+      - fr_hip_x
+      - fr_hip_y
+      - fr_knee
+      - bl_hip_x
+      - bl_hip_y
+      - bl_knee
+      - br_hip_x
+      - br_hip_y
+      - br_knee
+      - tail_root_joint
+      - tail_mid_joint
+      - tail_end_joint
+    publish_states: false

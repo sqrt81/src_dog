@@ -1,9 +1,13 @@
 <?xml version="1.0"?>
 
 <launch>
+  <arg name="add_tail" default="false" />
 
   <!-- Load joint controller configurations from YAML file to parameter server -->
-  <rosparam file="$(find dog_model)/config/controllers.yaml" command="load"/>
+  <rosparam if="$(arg add_tail)"
+    file="$(find dog_model)/config/controllers_tail.yaml" command="load" />
+  <rosparam unless="$(arg add_tail)"
+    file="$(find dog_model)/config/controllers.yaml" command="load" />
 
   <!-- load the controllers -->
   <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"

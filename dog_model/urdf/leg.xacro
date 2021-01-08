@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot
+    xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:macro name="attach_leg" params="leg_name parent_name xflip yflip">
+
+        <xacro:include filename="$(find dog_model)/urdf/defines.xacro" />
+
+        <link name="${leg_name}_hip">
+            <inertial>
+                <origin
+                    xyz="${- 0.00265550 * xflip} ${- 0.01336802 * yflip} 0.00003673"
+                    rpy="0 0 0" />
+                <mass
+                    value="0.6493" />
+                <inertia
+                    ixx="0.00042662"
+                    ixy="${- 0.00001327 * xflip * yflip}"
+                    ixz="${- 0.00007996 * xflip}"
+                    iyy="0.00047136"
+                    iyz="${0.00000020 * yflip}"
+                    izz="0.00066694" />
+                </inertial>
+            <visual>
+                <xacro:if value="${xflip > 0}">
+                    <xacro:property name="hip_model_pitch" value="0" />
+                </xacro:if>
+                <xacro:unless value="${xflip > 0}">
+                    <xacro:property name="hip_model_pitch" value="${M_PI}" />
+                </xacro:unless>
+                <xacro:if value="${yflip > 0}">
+                    <xacro:property name="hip_model_roll" value="0" />
+                </xacro:if>
+                <xacro:unless value="${yflip > 0}">
+                    <xacro:property name="hip_model_roll" value="${M_PI}" />
+                </xacro:unless>
+                <origin
+                    xyz="0 0 0"
+                    rpy="${hip_model_roll} ${hip_model_pitch} 0" />
+                <geometry>
+                    <mesh
+                        filename="package://dog_model/meshes/visualization/hip.stl" />
+                </geometry>
+                <material
+                    name="white" />
+            </visual>
+            <collision>
+                <origin
+                    xyz="0 0 0"
+                    rpy="${M_PI / 2} 0 0" />
+                <geometry>
+                    <cylinder radius="${MOTOR_COLL_RADIUS}" length="${HIP_COLL_LEN}" />
+                </geometry>
+            </collision>
+        </link>
+
+        <xacro:motor_joint joint="${leg_name}_hip_x"
+            parent="${parent_name}" child="${leg_name}_hip"
+            lower="-3.00" upper="3.00">
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <axis xyz="${yflip} 0 0" />
+        </xacro:motor_joint>
+
+        <link name="${leg_name}_thigh">
+            <inertial>
+                <origin
+                    xyz="${- 0.00004514 * xflip} ${- 0.02235964 * yflip} -0.01345988"
+                    rpy="0 0 0" />
+                <mass
+                    value="0.8609" />
+                <inertia
+                    ixx="0.00205953"
+                    ixy="${- 0.00000043 * xflip * yflip}"
+                    ixz="${- 0.00000016 * xflip}"
+                    iyy="0.00224921"
+                    iyz="${- 0.00025874 * yflip}"
+                    izz="0.00061479" />
+                </inertial>
+            <visual>
+                <xacro:if value="${yflip > 0}">
+                    <xacro:property name="thigh_model_yaw" value="0" />
+                </xacro:if>
+                <xacro:unless value="${yflip > 0}">
+                    <xacro:property name="thigh_model_yaw" value="${M_PI}" />
+                </xacro:unless>
+                <origin
+                    xyz="0 0 0"
+                    rpy="0 0 ${thigh_model_yaw}" />
+                <geometry>
+                    <mesh
+                        filename="package://dog_model/meshes/visualization/thigh.stl" />
+                </geometry>
+                <material name="white" />
+            </visual>
+            <collision>
+                <origin
+                    xyz="0 0 ${- THIGH_LEN / 2}"
+                    rpy="0 0 0" />
+                <geometry>
+                    <box size="${THIGH_COLL_WIDTH} ${THIGH_COLL_HEIGHT} ${THIGH_COLL_LEN}" />
+                </geometry>
+            </collision>
+        </link>
+
+        <xacro:motor_joint joint="${leg_name}_hip_y"
+            parent="${leg_name}_hip" child="${leg_name}_thigh"
+            lower="-3.89" upper="1.50">
+            <origin xyz="0 ${HIP_LEN * yflip} 0" rpy="0 0 0" />
+            <axis xyz="0 ${xflip} 0" />
+        </xacro:motor_joint>
+
+        <link name="${leg_name}_shin">
+            <inertial>
+                <origin
+                    xyz="0 ${- 0.00001159 * yflip} 0.09304793"
+                    rpy="0 0 0" />
+                <mass
+                    value="0.1199" />
+                <inertia
+                    ixx="0.00083588"
+                    ixy="0"
+                    ixz="0"
+                    iyy="0.00084294"
+                    iyz="${- 0.00000012 * yflip}"
+                    izz="0.00001603" />
+                </inertial>
+            <visual>
+                <xacro:if value="${yflip > 0}">
+                    <xacro:property name="shin_model_yaw" value="0" />
+                </xacro:if>
+                <xacro:unless value="${yflip > 0}">
+                    <xacro:property name="shin_model_yaw" value="${M_PI}" />
+                </xacro:unless>
+                <origin
+                    xyz="0 0 0"
+                    rpy="0 0 ${shin_model_yaw}" />
+                <geometry>
+                    <mesh
+                        filename="package://dog_model/meshes/visualization/shin.stl" />
+                </geometry>
+                <material
+                    name="white" />
+            </visual>
+            <collision>
+                <origin
+                    xyz="0 0 ${- SHIN_LEN / 2}"
+                    rpy="0 0 0" />
+                <geometry>
+                    <cylinder radius="${SHIN_COLL_RADIUS}" length="${SHIN_LEN}" />
+                </geometry>
+            </collision>
+        </link>
+
+        <xacro:motor_joint joint="${leg_name}_knee"
+            parent="${leg_name}_thigh" child="${leg_name}_shin"
+            lower="-2.70" upper="2.70">
+            <origin xyz="0 0 ${- THIGH_LEN}" rpy="0 0 0" />
+            <axis xyz="0 ${xflip} 0" />
+        </xacro:motor_joint>
+
+        <link
+            name="${leg_name}_foot">
+            <xacro:dummy_inertial />
+            <collision name="${leg_name}_foot_collision">
+                <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+                <geometry>
+                    <sphere
+                        radius="${FOOT_RADIUS}" />
+                </geometry>
+            </collision>
+        </link>
+  
+        <joint
+            name="${leg_name}_fixed_foot"
+            type="fixed">
+            <origin
+                xyz="0 0 ${- SHIN_LEN}"
+                rpy="0 0 0" />
+            <parent
+                link="${leg_name}_shin" />
+            <child
+                link="${leg_name}_foot" />
+        </joint>
+
+    </xacro:macro>
+
+</robot>

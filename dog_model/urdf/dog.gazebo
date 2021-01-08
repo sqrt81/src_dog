@@ -1,145 +1,150 @@
 <?xml version="1.0"?>
+
 <robot
-  xmlns:xacro="http://www.ros.org/wiki/xacro">
-  
-  <xacro:arg name="hang_up" default="false" />
-  
-  <!-- this joint is only for debugging/testing purpose -->
-  <xacro:if value="$(arg hang_up)" >
-    <link name="world" />
-    <joint
-      name="fixed_body"
-      type="fixed">
-      <origin
-        xyz="0 0 0.5"
-        rpy="0 0 0" />
-      <parent link="world" />
-      <child link="dummy" />
-      <!-- <axis xyz="0 0 1" /> -->
-      <!-- <limit lower="-0.4" upper="0.1" effort="10000" velocity="1000" /> -->
-    </joint>
-  </xacro:if>
-  
-  <link name="dummy" />
-  <joint name="dummy_joint" type="fixed">
-    <parent link="dummy" />
-    <child link="torso" />
-  </joint>
-  
-  <gazebo>
-    <!-- gazebo_ros_control will load controller for the motor -->
-    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
-      <robotNamespace>/dog</robotNamespace>
-      <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
-      <legacyModeNS>true</legacyModeNS>
-    </plugin>
-    
-    <!-- p3d plugin provides odometry, which can be used as ground truth & converted into tf -->
-    <plugin name="p3d_base_controller" filename="libgazebo_ros_p3d.so">
-      <alwaysOn>true</alwaysOn>
-      <updateRate>1000.0</updateRate>
-      <bodyName>torso</bodyName>
-      <topicName>ground_truth/state</topicName>
-      <frameName>world</frameName>
-      <xyzOffsets>0 0 0</xyzOffsets>
-      <rpyOffsets>0 0 0</rpyOffsets>
-    </plugin>
-  </gazebo>
-  
-  <gazebo reference="torso">
-    <gravity>true</gravity>
-    <sensor name="imu_sensor" type="imu">
-      <always_on>true</always_on>
-      <update_rate>500</update_rate>
-      <visualize>true</visualize>
-      <topic>__default_topic__</topic>
-      <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
-        <topicName>/dog/imu</topicName>
-        <bodyName>torso</bodyName>
-        <updateRateHZ>500</updateRateHZ>
-        <gaussianNoise>0.1</gaussianNoise>
-        <xyzOffset>0 0 0</xyzOffset>
-        <rpyOffset>0 0 0</rpyOffset>
-        <frameName>torso</frameName>
-      </plugin>
-    </sensor>
-    <selfCollide>true</selfCollide>
-    <kp>1000.0</kp>
-    <kd>100.0</kd>
-  </gazebo>
-  
-  <xacro:macro name="EnableSelfCollide" params="link">
-    <gazebo reference="${link}">
-      <selfCollide>true</selfCollide>
-      <kp>1000000.0</kp>
-      <kd>100.0</kd>
-    </gazebo>
-  </xacro:macro>
-  
-  <xacro:macro name="AddContactSensor" params="prefix">
-    <gazebo reference="${prefix}_foot">
-      <sensor type="contact" name="${prefix}_foot_contact_sensor">
-        <update_rate>1000.0</update_rate>
-        <contact>
-          <collision>${prefix}_shin_fixed_joint_lump__${prefix}_foot_collision_collision_1</collision>
-        </contact>
-        <plugin name="${prefix}_foot_gazebo_ros_bumper_controller" filename="libgazebo_ros_bumper.so">
-          <alwaysOn>true</alwaysOn>
-          <frameName>${prefix}_foot</frameName>
-          <updateRate>1000</updateRate>
-          <bumperTopicName>/ground_truth/${prefix}_foot_contact</bumperTopicName>
-        </plugin>
-      </sensor>
-    </gazebo>
-  </xacro:macro>
-  
-  <xacro:macro name="AddTrans" params="joint id">
-    <transmission name="trans${id}">
-      <type>transmission_interface/SimpleTransmission</type>
-      <joint name="${joint}">
-        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
-      </joint>
-      <actuator name="motor${id}">
-        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
-        <mechanicalReduction>1</mechanicalReduction>
-      </actuator>
-    </transmission>
-  </xacro:macro>
-  
-  <!--<xacro:EnableSelfCollide link="torso" />-->
-  <xacro:EnableSelfCollide link="fl_hip" />
-  <xacro:EnableSelfCollide link="fl_thigh" />
-  <xacro:EnableSelfCollide link="fl_shin" />
-  <xacro:EnableSelfCollide link="fr_hip" />
-  <xacro:EnableSelfCollide link="fr_thigh" />
-  <xacro:EnableSelfCollide link="fr_shin" />
-  <xacro:EnableSelfCollide link="bl_hip" />
-  <xacro:EnableSelfCollide link="bl_thigh" />
-  <xacro:EnableSelfCollide link="bl_shin" />
-  <xacro:EnableSelfCollide link="br_hip" />
-  <xacro:EnableSelfCollide link="br_thigh" />
-  <xacro:EnableSelfCollide link="br_shin" />
-  
-  <xacro:EnableSelfCollide link="fl_foot" />
-  <xacro:EnableSelfCollide link="fr_foot" />
-  <xacro:EnableSelfCollide link="bl_foot" />
-  <xacro:EnableSelfCollide link="br_foot" />
-  
-  <xacro:AddContactSensor prefix="fl" />
-  <xacro:AddContactSensor prefix="fr" />
-  <xacro:AddContactSensor prefix="bl" />
-  <xacro:AddContactSensor prefix="br" />
-  
-  <xacro:AddTrans joint="fl_hip_x" id="1" />
-  <xacro:AddTrans joint="fl_hip_y" id="2" />
-  <xacro:AddTrans joint="fl_knee"  id="3" />
-  <xacro:AddTrans joint="fr_hip_x" id="4" />
-  <xacro:AddTrans joint="fr_hip_y" id="5" />
-  <xacro:AddTrans joint="fr_knee"  id="6" />
-  <xacro:AddTrans joint="bl_hip_x" id="7" />
-  <xacro:AddTrans joint="bl_hip_y" id="8" />
-  <xacro:AddTrans joint="bl_knee"  id="9" />
-  <xacro:AddTrans joint="br_hip_x" id="10" />
-  <xacro:AddTrans joint="br_hip_y" id="11" />
-  <xacro:AddTrans joint="br_knee"  id="12" />
+    xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:macro name="dog_gazebo_config">
+
+        <xacro:arg name="hang_up" default="false" />
+
+        <!-- this joint is only for debugging/testing purpose -->
+        <xacro:if value="$(arg hang_up)" >
+            <link name="world" />
+            <joint
+                name="fixed_body"
+                type="fixed">
+                <origin
+                    xyz="0 0 0.5"
+                    rpy="0 0 0" />
+                <parent link="world" />
+                <child link="dummy" />
+                <!-- <axis xyz="0 0 1" /> -->
+                <!-- <limit lower="-0.4" upper="0.1" effort="10000" velocity="1000" /> -->
+            </joint>
+        </xacro:if>
+
+        <link name="dummy" />
+        <joint name="dummy_joint" type="fixed">
+            <parent link="dummy" />
+            <child link="torso" />
+        </joint>
+
+        <gazebo>
+            <!-- gazebo_ros_control will load controller for the motor -->
+            <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+                <robotNamespace>/dog</robotNamespace>
+                <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+                <legacyModeNS>true</legacyModeNS>
+            </plugin>
+
+            <!-- p3d plugin provides odometry, which can be used as ground truth & converted into tf -->
+            <plugin name="p3d_base_controller" filename="libgazebo_ros_p3d.so">
+                <alwaysOn>true</alwaysOn>
+                <updateRate>1000.0</updateRate>
+                <bodyName>torso</bodyName>
+                <topicName>ground_truth/state</topicName>
+                <frameName>world</frameName>
+                <xyzOffsets>0 0 0</xyzOffsets>
+                <rpyOffsets>0 0 0</rpyOffsets>
+            </plugin>
+        </gazebo>
+
+        <gazebo reference="torso">
+            <gravity>true</gravity>
+            <sensor name="imu_sensor" type="imu">
+                <always_on>true</always_on>
+                <update_rate>500</update_rate>
+                <visualize>true</visualize>
+                <topic>__default_topic__</topic>
+                <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
+                    <topicName>/dog/imu</topicName>
+                    <bodyName>torso</bodyName>
+                    <updateRateHZ>500</updateRateHZ>
+                    <gaussianNoise>0.1</gaussianNoise>
+                    <xyzOffset>0 0 0</xyzOffset>
+                    <rpyOffset>0 0 0</rpyOffset>
+                    <frameName>torso</frameName>
+                </plugin>
+            </sensor>
+            <selfCollide>true</selfCollide>
+            <kp>1000.0</kp>
+            <kd>100.0</kd>
+        </gazebo>
+
+        <xacro:macro name="EnableSelfCollide" params="link">
+            <gazebo reference="${link}">
+                <selfCollide>true</selfCollide>
+                <kp>1000000.0</kp>
+                <kd>100.0</kd>
+            </gazebo>
+        </xacro:macro>
+
+        <xacro:macro name="AddContactSensor" params="prefix">
+            <gazebo reference="${prefix}_foot">
+                <sensor type="contact" name="${prefix}_foot_contact_sensor">
+                    <update_rate>1000.0</update_rate>
+                    <contact>
+                        <collision>${prefix}_shin_fixed_joint_lump__${prefix}_foot_collision_collision_1</collision>
+                    </contact>
+                    <plugin name="${prefix}_foot_gazebo_ros_bumper_controller" filename="libgazebo_ros_bumper.so">
+                        <alwaysOn>true</alwaysOn>
+                        <frameName>${prefix}_foot</frameName>
+                        <updateRate>1000</updateRate>
+                        <bumperTopicName>/ground_truth/${prefix}_foot_contact</bumperTopicName>
+                    </plugin>
+                </sensor>
+            </gazebo>
+        </xacro:macro>
+
+        <xacro:macro name="AddTrans" params="joint id">
+            <transmission name="trans${id}">
+                <type>transmission_interface/SimpleTransmission</type>
+                <joint name="${joint}">
+                    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                </joint>
+                <actuator name="motor${id}">
+                    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                    <mechanicalReduction>1</mechanicalReduction>
+                </actuator>
+            </transmission>
+        </xacro:macro>
+
+        <!--<xacro:EnableSelfCollide link="torso" />-->
+        <xacro:EnableSelfCollide link="fl_hip" />
+        <xacro:EnableSelfCollide link="fl_thigh" />
+        <xacro:EnableSelfCollide link="fl_shin" />
+        <xacro:EnableSelfCollide link="fr_hip" />
+        <xacro:EnableSelfCollide link="fr_thigh" />
+        <xacro:EnableSelfCollide link="fr_shin" />
+        <xacro:EnableSelfCollide link="bl_hip" />
+        <xacro:EnableSelfCollide link="bl_thigh" />
+        <xacro:EnableSelfCollide link="bl_shin" />
+        <xacro:EnableSelfCollide link="br_hip" />
+        <xacro:EnableSelfCollide link="br_thigh" />
+        <xacro:EnableSelfCollide link="br_shin" />
+
+        <xacro:EnableSelfCollide link="fl_foot" />
+        <xacro:EnableSelfCollide link="fr_foot" />
+        <xacro:EnableSelfCollide link="bl_foot" />
+        <xacro:EnableSelfCollide link="br_foot" />
+
+        <xacro:AddContactSensor prefix="fl" />
+        <xacro:AddContactSensor prefix="fr" />
+        <xacro:AddContactSensor prefix="bl" />
+        <xacro:AddContactSensor prefix="br" />
+
+        <xacro:AddTrans joint="fl_hip_x" id="1" />
+        <xacro:AddTrans joint="fl_hip_y" id="2" />
+        <xacro:AddTrans joint="fl_knee"  id="3" />
+        <xacro:AddTrans joint="fr_hip_x" id="4" />
+        <xacro:AddTrans joint="fr_hip_y" id="5" />
+        <xacro:AddTrans joint="fr_knee"  id="6" />
+        <xacro:AddTrans joint="bl_hip_x" id="7" />
+        <xacro:AddTrans joint="bl_hip_y" id="8" />
+        <xacro:AddTrans joint="bl_knee"  id="9" />
+        <xacro:AddTrans joint="br_hip_x" id="10" />
+        <xacro:AddTrans joint="br_hip_y" id="11" />
+        <xacro:AddTrans joint="br_knee"  id="12" />
+
+    </xacro:macro>
 </robot>

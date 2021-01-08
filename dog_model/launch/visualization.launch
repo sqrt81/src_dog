@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+
+<!-- view the robot model in rviz -->
+
+<launch>
+  <arg name="add_tail" default="false" />
+  <arg name="hang_up" default="false" />
+  
+  <param name="robot_description"
+    command=
+    "$(find xacro)/xacro $(find dog_model)/urdf/robot.xacro
+     hang_up:=$(arg hang_up) add_tail:=$(arg add_tail)" />
+  
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find dog_model)/urdf.rviz" />
+  
+  <node name="joint_state_publisher_gui"
+    pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" />
+  
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"
+	respawn="false" output="screen" />
+    
+</launch>
+

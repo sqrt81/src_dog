@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot
+    xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:property name="M_PI" value="3.1415926535897931" />
+
+    <xacro:property name="HIP_POS_X" value="0.2335" />
+    <xacro:property name="HIP_POS_Y" value="0.0855" />
+    <xacro:property name="HIP_LEN" value="0.0575" />
+    <xacro:property name="THIGH_LEN" value="0.2" />
+    <xacro:property name="SHIN_LEN" value="0.195" />
+    <xacro:property name="FOOT_RADIUS" value="0.0195" />
+    <xacro:property name="TAIL_POS_X" value="-0.057" />
+    <xacro:property name="TAIL_POS_Z" value="0.0805" />
+    <xacro:property name="TAIL_ROOT_LEN" value="0.15" />
+    <xacro:property name="TAIL_MID_LEN" value="0.255" />
+    <xacro:property name="TAIL_END_LEN" value="0.2" />
+
+    <xacro:property name="MOTOR_FRICTION" value="0.09" />
+    <xacro:property name="MOTOR_DAMPING" value="0.04" />
+    <xacro:property name="MOTOR_TORQUE_MAX" value="17" />
+    <xacro:property name="MOTOR_VELOCITY_MAX" value="40" />
+    <xacro:property name="MOTOR_TORQUE_KP" value="100" />
+    <xacro:property name="MOTOR_TORQUE_KD" value="1000" />
+    
+    <xacro:property name="TORSO_COLL_LEN" value="0.31" />
+    <xacro:property name="TORSO_COLL_WIDTH" value="0.201" />
+    <xacro:property name="TORSO_COLL_HEIGHT" value="0.08" />
+    <xacro:property name="MOTOR_COLL_RADIUS" value="0.05" />
+    <xacro:property name="HIP_COLL_LEN" value="0.094" />
+    <xacro:property name="THIGH_COLL_LEN" value="0.272" />
+    <xacro:property name="THIGH_COLL_WIDTH" value="0.072" />
+    <xacro:property name="THIGH_COLL_HEIGHT" value="0.028" />
+    <xacro:property name="SHIN_COLL_RADIUS" value="0.01" />
+    <xacro:property name="TAIL_ROOT_COLL_LEN" value="0.198" />
+    <xacro:property name="TAIL_ROOT_COLL_WIDTH" value="0.01" />
+    <xacro:property name="TAIL_ROOT_COLL_HEIGHT" value="0.015" />
+    <xacro:property name="TAIL_ROOT_COLL_CENTER_X" value="-0.03" />
+    <xacro:property name="TAIL_ROOT_COLL_CENTER_Z" value="-0.0115" />
+    <xacro:property name="TAIL_MID_COLL_LEN" value="0.31" />
+    <xacro:property name="TAIL_MID_COLL_WIDTH" value="0.04" />
+    <xacro:property name="TAIL_MID_COLL_HEIGHT" value="0.055" />
+    <xacro:property name="TAIL_END_COLL_LEN" value="0.056" />
+    <xacro:property name="TAIL_END_COLL_CENTER_Y" value="-0.01" />
+
+    <xacro:macro name="dummy_inertial">
+        <inertial>
+            <origin
+                xyz="0 0 0"
+                rpy="0 0 0" />
+            <mass
+                value="1E-5" />
+            <inertia
+                ixx="1E-9"
+                ixy="0"
+                ixz="0"
+                iyy="1E-9"
+                iyz="0"
+                izz="1E-9" />
+        </inertial>
+    </xacro:macro>
+
+    <xacro:macro name="motor_joint"
+        params="joint *origin parent child *axis lower upper">
+        <joint
+            name="${joint}"
+            type="revolute">
+            <xacro:insert_block name="origin" />
+            <parent link="${parent}" />
+            <child link="${child}" />
+            <xacro:insert_block name="axis" />
+            <dynamics
+                damping="${MOTOR_DAMPING}"
+                friction="${MOTOR_FRICTION}" />
+            <limit
+                lower="${lower}"
+                upper="${upper}"
+                effort="${MOTOR_TORQUE_MAX}"
+                velocity="${MOTOR_VELOCITY_MAX}" />
+            <safety_controller
+                soft_lower_limit="${lower + 0.01}"
+                soft_upper_limit="${upper - 0.01}"
+                k_velocity="${MOTOR_TORQUE_KD}"
+                k_position="${MOTOR_TORQUE_KP}" />
+        </joint>
+    </xacro:macro>
+</robot>
+

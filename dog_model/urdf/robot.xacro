@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot name="dog"
+    xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:arg name="add_tail" default="false" />
+
+    <xacro:include filename="$(find dog_model)/urdf/dog.xacro" />
+    <xacro:include filename="$(find dog_model)/urdf/dog.gazebo" />
+
+    <xacro:build_dog />
+    <xacro:dog_gazebo_config />
+
+    <xacro:if value="$(arg add_tail)" >
+        <xacro:include filename="$(find dog_model)/urdf/tail.xacro" />
+        <xacro:include filename="$(find dog_model)/urdf/tail.gazebo" />
+
+        <xacro:attach_tail parent_name="torso" />
+        <xacro:tail_gazebo_config />
+    </xacro:if>
+
+</robot>
+

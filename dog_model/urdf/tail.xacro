@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot
+    xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:macro name="attach_tail" params="parent_name">
+
+        <xacro:include filename="$(find dog_model)/urdf/defines.xacro" />
+
+        <link name="tail_base">
+            <inertial>
+                <origin
+                    xyz="-0.05362594 -0.00002938 0.03444378"
+                    rpy="0 0 0" />
+                <mass
+                    value="0.8118" />
+                <inertia
+                    ixx="0.00093099"
+                    ixy="-0.00000030"
+                    ixz="-0.00009515"
+                    iyy="0.00074798"
+                    iyz="-0.00000016"
+                    izz="0.00126707" />
+                </inertial>
+            <visual>
+                <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+                <geometry>
+                    <mesh
+                        filename="package://dog_model/meshes/visualization/tail_base.stl" />
+                </geometry>
+                <material
+                    name="white" />
+            </visual>
+        </link>
+
+        <joint
+            name="tail_base_fixed"
+            type="fixed">
+            <origin
+                xyz="0 0 0"
+                rpy="0 0 0" />
+            <parent
+                link="${parent_name}" />
+            <child
+                link="tail_base" />
+        </joint>
+
+        <link name="tail_root">
+            <inertial>
+                <origin
+                    xyz="-0.09456878 0.00294044 -0.00796432"
+                    rpy="0 0 0" />
+                <mass
+                    value="0.1819" />
+                <inertia
+                    ixx="0.00005455"
+                    ixy="-0.00002806"
+                    ixz="-0.00012641"
+                    iyy="0.00106115"
+                    iyz="0.00000411"
+                    izz="0.00101542" />
+                </inertial>
+            <visual>
+                <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+                <geometry>
+                    <mesh
+                        filename="package://dog_model/meshes/visualization/tail_root.stl" />
+                </geometry>
+                <material
+                    name="white" />
+            </visual>
+            <collision>
+                <origin
+                    xyz="${TAIL_ROOT_COLL_CENTER_X} 0 ${TAIL_ROOT_COLL_CENTER_Z}"
+                    rpy="0 0 0" />
+                <geometry>
+                    <box size="${TAIL_ROOT_COLL_LEN}
+                               ${TAIL_ROOT_COLL_WIDTH}
+                               ${TAIL_ROOT_COLL_HEIGHT} " />
+                </geometry>
+            </collision>
+        </link>
+
+        <xacro:motor_joint joint="tail_root_joint"
+            parent="tail_base" child="tail_root"
+            lower="-3.00" upper="3.00">
+            <origin xyz="${TAIL_POS_X} 0 ${TAIL_POS_Z}" rpy="0 0 0" />
+            <axis xyz="0 0 1" />
+        </xacro:motor_joint>
+
+        <link name="tail_mid">
+            <inertial>
+                <origin
+                    xyz="-0.11592980 0.00127482 0"
+                    rpy="0 0 0" />
+                <mass
+                    value="0.3782" />
+                <inertia
+                    ixx="0.00012438"
+                    ixy="-0.00003213"
+                    ixz="0"
+                    iyy="0.00256450"
+                    iyz="0"
+                    izz="0.00257049" />
+                </inertial>
+            <visual>
+                <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+                <geometry>
+                    <mesh
+                        filename="package://dog_model/meshes/visualization/tail_mid.stl" />
+                </geometry>
+                <material
+                    name="white" />
+            </visual>
+            <collision>
+                <origin
+                    xyz="${- TAIL_MID_LEN / 2} 0 0"
+                    rpy="0 0 0" />
+                <geometry>
+                    <box size="${TAIL_MID_COLL_LEN}
+                               ${TAIL_MID_COLL_WIDTH}
+                               ${TAIL_MID_COLL_HEIGHT} " />
+                </geometry>
+            </collision>
+        </link>
+
+        <xacro:motor_joint joint="tail_mid_joint"
+            parent="tail_root" child="tail_mid"
+            lower="-3.00" upper="3.00">
+            <origin xyz="${- TAIL_ROOT_LEN} 0 0" rpy="0 0 0" />
+            <axis xyz="0 1 0" />
+        </xacro:motor_joint>
+
+        <link name="tail_end">
+            <inertial>
+                <origin
+                    xyz="-0.17274418 -0.01120927 -0.00000505"
+                    rpy="0 0 0" />
+                <mass
+                    value="0.8661" />
+                <inertia
+                    ixx="0.00055097"
+                    ixy="0.00025000"
+                    ixz="-0.00000055"
+                    iyy="0.00381779"
+                    iyz="0.00000032"
+                    izz="0.00360799" />
+                </inertial>
+            <visual>
+                <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+                <geometry>
+                    <mesh
+                        filename="package://dog_model/meshes/visualization/tail_end.stl" />
+                </geometry>
+                <material
+                    name="white" />
+            </visual>
+            <collision>
+                <origin
+                    xyz="${- TAIL_END_LEN} ${TAIL_END_COLL_CENTER_Y} 0"
+                    rpy="${M_PI / 2} 0 0" />
+                <geometry>
+                    <cylinder radius="${MOTOR_COLL_RADIUS}" length="${TAIL_END_COLL_LEN}" />
+                </geometry>
+            </collision>
+        </link>
+
+        <xacro:motor_joint joint="tail_end_joint"
+            parent="tail_mid" child="tail_end"
+            lower="-3.00" upper="3.00">
+            <origin xyz="${- TAIL_MID_LEN} 0 0" rpy="0 0 0" />
+            <axis xyz="0 1 0" />
+        </xacro:motor_joint>
+
+    </xacro:macro>
+
+</robot>
+
