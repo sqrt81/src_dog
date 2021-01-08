@@ -5,6 +5,33 @@
 
     <xacro:macro name="attach_tail" params="parent_name">
 
+        <xacro:macro name="mimic_joint"
+            params="joint *origin parent child *axis lower upper use_friction">
+            <joint
+                name="${joint}"
+                type="revolute">
+                <xacro:insert_block name="origin" />
+                <parent link="${parent}" />
+                <child link="${child}" />
+                <xacro:insert_block name="axis" />
+                <xacro:if value="${use_friction}">
+                    <dynamics
+                        damping="${MOTOR_DAMPING}"
+                        friction="${MOTOR_FRICTION}" />
+                </xacro:if>
+                <limit
+                    lower="${lower}"
+                    upper="${upper}"
+                    effort="1000"
+                    velocity="${MOTOR_VELOCITY_MAX}" />
+                <safety_controller
+                    soft_lower_limit="${lower + 0.01}"
+                    soft_upper_limit="${upper - 0.01}"
+                    k_velocity="${MOTOR_TORQUE_KD}"
+                    k_position="${MOTOR_TORQUE_KP}" />
+            </joint>
+        </xacro:macro>
+
         <xacro:include filename="$(find dog_model)/urdf/defines.xacro" />
 
         <link name="tail_base">
@@ -87,7 +114,7 @@
 
         <xacro:motor_joint joint="tail_root_joint"
             parent="tail_base" child="tail_root"
-            lower="-3.00" upper="3.00">
+            lower="-3.14" upper="3.14">
             <origin xyz="${TAIL_POS_X} 0 ${TAIL_POS_Z}" rpy="0 0 0" />
             <axis xyz="0 0 1" />
         </xacro:motor_joint>
@@ -130,12 +157,12 @@
             </collision>
         </link>
 
-        <xacro:motor_joint joint="tail_mid_joint"
+        <xacro:mimic_joint joint="tail_mid_joint"
             parent="tail_root" child="tail_mid"
-            lower="-3.00" upper="3.00">
+            lower="-2.00" upper="2.00" use_friction="false">
             <origin xyz="${- TAIL_ROOT_LEN} 0 0" rpy="0 0 0" />
             <axis xyz="0 1 0" />
-        </xacro:motor_joint>
+        </xacro:mimic_joint>
 
         <link name="tail_end">
             <inertial>
@@ -173,12 +200,12 @@
             </collision>
         </link>
 
-        <xacro:motor_joint joint="tail_end_joint"
+        <xacro:mimic_joint joint="tail_end_joint"
             parent="tail_mid" child="tail_end"
-            lower="-3.00" upper="3.00">
+            lower="-2.00" upper="2.00" use_friction="true">
             <origin xyz="${- TAIL_MID_LEN} 0 0" rpy="0 0 0" />
             <axis xyz="0 1 0" />
-        </xacro:motor_joint>
+        </xacro:mimic_joint>
 
     </xacro:macro>
 

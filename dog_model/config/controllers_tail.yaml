@@ -18,6 +18,13 @@ dog:
       - br_hip_y
       - br_knee
       - tail_root_joint
-      - tail_mid_joint
       - tail_end_joint
+    mimic_joints: {
+      tail_mid_joint : tail_end_joint,
+    }
+    mimic_joint_torque_limits: {
+      tail_end_joint : 17,
+    }
+    mimic_physics_kp : 1000
+    mimic_physics_kd : 10
     publish_states: false

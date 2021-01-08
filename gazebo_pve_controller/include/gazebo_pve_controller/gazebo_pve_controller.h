@@ -21,7 +21,7 @@ public:
     bool init(hardware_interface::EffortJointInterface *hw,
               ros::NodeHandle &nh) override;
 
-    void update(const ros::Time& time, const ros::Duration& period);
+    void update(const ros::Time& time, const ros::Duration& period) override;
 
 private:
     void commandCB(const std_msgs::Float64MultiArrayConstPtr& msg);
@@ -48,9 +48,12 @@ private:
 
     unsigned int joint_cnt_;
     std::vector<hardware_interface::JointHandle> joints_;
+    std::vector<std::vector<hardware_interface::JointHandle>> mimicking_joints_;
     std::vector<MotorCommand> joint_cmd_;
     std::vector<MotorState> joint_state_;
     std::vector<double> joint_torque_limit_;
+    double mimic_kp_;
+    double mimic_kd_;
 };
 
 }

@@ -119,6 +119,10 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        dummy:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
         fl_base:
           Alpha: 1
           Show Axes: false
@@ -167,11 +171,35 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        tail_base:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        tail_end:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        tail_mid:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        tail_root:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         torso:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
       Name: RobotModel
       Robot Description: robot_description
       TF Prefix: ""
@@ -246,7 +274,7 @@ Visualization Manager:
     Background Color: 48; 48; 48
     Default Light: true
     Fixed Frame: torso
-    Frame Rate: 30
+    Frame Rate: 100
   Name: root
   Tools:
     - Class: rviz/Interact
@@ -269,7 +297,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.0433008670806885
+      Distance: 1.2529903650283813
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -285,9 +313,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.31479692459106445
+      Pitch: 0.3997970223426819
       Target Frame: <Fixed Frame>
-      Yaw: 2.985405445098877
+      Yaw: 2.910405397415161
     Saved: ~
 Window Geometry:
   Displays:
