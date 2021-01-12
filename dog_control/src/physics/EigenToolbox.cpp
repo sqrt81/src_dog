@@ -76,7 +76,7 @@ Eigen::Quaterniond SO3ToQuat(const Eigen::Vector3d &so3)
 
     if (abs(norm) > 1e-6)
     {
-        unit = so3 / norm * 2;
+        unit = so3 / norm / 2;
 
         quat.w() = cos(norm);
         quat.vec() = unit * sin(norm);

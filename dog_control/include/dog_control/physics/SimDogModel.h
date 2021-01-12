@@ -14,11 +14,21 @@ class SimDogModel : protected DogModel
 public:
     using DogModel::Initialize;
 
-    using spatial::FloatingBaseModel::SetJointMotionState;
-    using spatial::FloatingBaseModel::ForwardKinematics;
+    void Update(FBJSCRef stat);
+
+    using spatial::FloatingBaseModel::ToggleDiff;
+//    using spatial::FloatingBaseModel::SetJointMotionState;
+//    using spatial::FloatingBaseModel::ForwardKinematics;
     using spatial::FloatingBaseModel::MassMatrix;
+    using spatial::FloatingBaseModel::MassMatrixDiff;
     using spatial::FloatingBaseModel::BiasForces;
+    using spatial::FloatingBaseModel::BiasForceDiff;
     using spatial::FloatingBaseModel::BaseForceJacobian;
+
+//    using DogModel::FullJacobMat;
+    using DogModel::FullJacob;
+    using DogModel::FullJacobBaseDiff;
+    using DogModel::FullJacobJointDiff;
 };
 
 } /* physics */

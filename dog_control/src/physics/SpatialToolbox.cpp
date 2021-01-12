@@ -98,7 +98,7 @@ SMat BuildJointTransform(const SVec& joint_axis,
     {
     case revolute:
     {
-        double norm = joint_axis.topRows<3>().norm();
+        const double norm = joint_axis.topRows<3>().norm();
         rot = Eigen::AngleAxisd(q * norm, joint_axis.topRows<3>() / norm);
         trans = Eigen::Vector3d::Zero();
     }
@@ -112,6 +112,39 @@ SMat BuildJointTransform(const SVec& joint_axis,
     }
 
     return BuildTransform(trans, rot);
+}
+
+SMat BuildJointTransformDiff(const SVec& joint_axis,
+                             const JointType joint_type,
+                             const double q)
+{
+    Eigen::Quaterniond rot;
+    Eigen::Vector3d trans;
+
+    switch(joint_type)
+    {
+    case revolute:
+    {
+        const double norm = joint_axis.topRows<3>().norm();
+        rot = Eigen::AngleAxisd(q * norm, joint_axis.topRows<3>() / norm);
+        trans = Eigen::Vector3d::Zero();
+    }
+        break;
+    case floating:
+        LOG(FATAL) << "[Build Joint Transform Diff] "
+                      "Floating base can't be differentiated.";
+    default:
+        LOG(FATAL) << "[Build Joint Transform Diff] "
+                      "Unknown joint type.";
+    }
+
+    const Eigen::Matrix3d rot_mat
+            = ToLowerMatrix(joint_axis.topRows<3>()) * rot.toRotationMatrix();
+    SMat transform = SMat::Zero();
+    transform.topLeftCorner<3, 3>() = rot_mat.transpose();
+    transform.bottomRightCorner<3, 3>() = rot_mat.transpose();
+
+    return transform;
 }
 
 SMat MotionTfInverse(const SMat& motion_tf)

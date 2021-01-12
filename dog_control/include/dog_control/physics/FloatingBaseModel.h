@@ -29,6 +29,7 @@ protected:
     using FBJS = message::FloatingBaseJointState;
     using FBJSCRef = message::FBJSCRef;
     using FBJSDCRef = message::FBJSDCRef;
+    using Tensor3D = std::vector<Eigen::MatrixXd>;
 
 public:
     FloatingBaseModel() = default;
@@ -51,6 +52,13 @@ public:
      * @return              end effector's id, begin from 0
      */
     int AddEndEffector(int link_id, const Eigen::Vector3d& ee_local_pos);
+
+    /**
+     * @brief ToggleDiff
+     * Enable or disable computing differentials.
+     * @param compute_diff  whether to enable differential computing
+     */
+    void ToggleDiff(bool compute_diff);
 
     /**
      * @brief SetJointMotionState
@@ -78,6 +86,13 @@ public:
     Eigen::VectorXd BiasForces();
 
     /**
+     * @brief BiasForceDiff
+     * Calculate BiasForce's difference wrt. q and vq.
+     * @return      (dof * 2) vectors representing bias forces's differentials
+     */
+    std::vector<Eigen::VectorXd> BiasForceDiff();
+
+    /**
      * @brief BaseForceJacobian
      * Compute base bias force's jacobian w.r.t. base spatial motion.
      * @return          6 * 6 jacobian matrix
@@ -96,6 +111,12 @@ public:
      * @return          (6 + joint_cnt) x (6 + joint_cnt) mass matrix H
      */
     Eigen::MatrixXd MassMatrix();
+
+    /**
+     * @brief MassMatrixDiff
+     * @return  matrixs representing mass's differentials wrt. joint position
+     */
+    Tensor3D MassMatrixDiff();
 
     /**
      * @brief EEPos
@@ -120,14 +141,26 @@ public:
     void DemoInfo();
 
 protected:
+    void InitDiffDepends();
+
     std::vector<NodeDescription> node_description_;
     std::vector<int> parent_;
     std::vector<EndEffectorInfo> ee_info_;
+
+    std::vector<std::vector<size_t>> mass_diff_deps_;
+    std::vector<std::vector<size_t>> chain_deps_;
+    std::vector<std::vector<size_t>> kin_diff_deps_;
+    std::vector<std::vector<size_t>> bias_diff_deps_;
+
+    bool compute_diff_;
 
     bool kinematics_updated_;
     bool bias_force_updated_;
     bool mass_matrix_updated_;
     bool base_bias_jacob_updated_;
+
+    bool bias_force_diff_updated_;
+    bool mass_matrix_diff_updated_;
 
     FBJS js_;
 
@@ -158,6 +191,19 @@ protected:
     Eigen::VectorXd compensate_;
     Eigen::MatrixXd mass_matrix_;
     SMat base_bias_jacob_;
+    // connected parts' inertia
+    std::vector<SMat> tree_inertia_;
+
+    // differentials
+    // dv_[i] / dq[j] and dv_[i] / dvq[j]
+    std::vector<std::vector<SVec>> dv_;
+    // da_C_[i] / dq[j] and da_C_[i] / dvq[j]
+    std::vector<std::vector<SVec>> daC_;
+    std::vector<SMat> diff_X_parent_; // dX_parent_[i] / dq[i]
+    std::vector<SMat> diff_X_parent_rot_;
+
+    Tensor3D mass_matrix_diff_;
+    std::vector<Eigen::VectorXd> bias_diff_;
 };
 
 } /* spatial */

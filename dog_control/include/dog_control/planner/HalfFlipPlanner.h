@@ -48,6 +48,7 @@ private:
     double stance_time_;    // time on ground
     double torso_height_;   // torso height during stance stage
     double gravity_;        // gravity's z component, positive
+    double stable_time_;    // time for stablization after landing
     double rot_factor_up_;
     double rot_factor_down_;
 

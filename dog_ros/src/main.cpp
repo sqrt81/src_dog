@@ -5,5 +5,5 @@ int main(int argc, char** argv)
     (void) argc;
     (void) argv;
 
-    test_HalfFlip(argc, argv);
+    test_DynamicsDiff(argc, argv);
 }

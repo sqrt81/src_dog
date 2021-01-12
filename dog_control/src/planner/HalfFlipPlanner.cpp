@@ -27,6 +27,8 @@ void HalfFlipPlanner::Initialize(utils::ParamDictCRef dict)
                                                       planner/HALF_FLIP));
     rot_factor_down_ = ReadParOrDie(dict, PARAM_WITH_NS(rot_factor_down,
                                                         planner/HALF_FLIP));
+    stable_time_ = ReadParOrDie(dict, PARAM_WITH_NS(stable_time,
+                                                    planner/HALF_FLIP));
     step_width_ = 0.283 * 2;
     flip_time_ = aerial_time_ + stance_time_ * 2;
     torso_height_ = 0.15;
@@ -92,7 +94,7 @@ void HalfFlipPlanner::Update()
 
     message::LegConfiguration cur_conf;
 
-    if (cur_time > contact_time_ + 1. && flip_done_)
+    if (cur_time > contact_time_ + stable_time_ && flip_done_)
     {
         contact_time_ += 10000.;
 
@@ -360,9 +362,9 @@ void HalfFlipPlanner::Update()
 void HalfFlipPlanner::ReWriteDictPos()
 {
     dict_["control/MPC/pos_w"] = 10;
-    dict_["control/MPC/vel_w"] = 0.1;
+    dict_["control/MPC/vel_w"] = 0.01;
     dict_["control/MPC/rot_w"] = 100;
-    dict_["control/MPC/rot_vel_w"] = 1;
+    dict_["control/MPC/rot_vel_w"] = 0.01;
 }
 
 void HalfFlipPlanner::ReWriteDictVel()

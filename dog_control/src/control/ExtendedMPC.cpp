@@ -415,7 +415,7 @@ void ExtendedMPC::SyncUpdate()
         const Eigen::Vector3d interval_gravity = rot_interval * gravity_;
         desired_acc.segment<3>(3) -= interval_gravity;
 
-        pred_model_->SetJointMotionState(s);
+        pred_model_->Update(s);
         const physics::spatial::SMat inv_H
                 = pred_model_->MassMatrix().topLeftCorner<6, 6>().inverse();
 

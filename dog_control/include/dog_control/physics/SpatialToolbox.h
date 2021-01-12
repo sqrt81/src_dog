@@ -68,6 +68,19 @@ SMat BuildJointTransform(const SVec& joint_axis,
                          const double q);
 
 /**
+ * @brief BuildJointTransformDiff
+ * Build spatial transform's differential of a joint,
+ * i.e. d(spatial transform) / dq
+ * @param joint_axis
+ * @param joint_type
+ * @param q
+ * @return
+ */
+SMat BuildJointTransformDiff(const SVec& joint_axis,
+                             const JointType joint_type,
+                             const double q);
+
+/**
  * @brief MotionTfInverse
  * Inverse a transform matrix for motion vectors.
  * @param motion_tf     transform of motion vectors from frame A to frame B

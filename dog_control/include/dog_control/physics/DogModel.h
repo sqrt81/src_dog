@@ -147,6 +147,22 @@ public:
      */
     FullJacobMat FullJacob(LegName leg_name) const;
 
+    /**
+     * @brief FullJacobBaseDiff
+     * Compute Leg jacobian's derivative wrt. base orientation
+     * @param leg_name          the leg to compute
+     * @return                  3 dim jacobian's differentials
+     */
+    std::vector<FullJacobMat> FullJacobBaseDiff(LegName leg_name) const;
+
+    /**
+     * @brief FullJacobJointDiff
+     * Compute Leg jacobian's derivative wrt. leg joints
+     * @param leg_name          the leg to compute
+     * @return                  3 dim jacobian's differentials
+     */
+    std::vector<FullJacobMat> FullJacobJointDiff(LegName leg_name) const;
+
     Eigen::Vector3d VJDotVq(LegName leg_name) const;
 
     /**

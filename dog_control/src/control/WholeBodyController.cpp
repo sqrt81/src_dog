@@ -131,7 +131,7 @@ void WholeBodyController::SetTorsoMotionTask(
 void WholeBodyController::SetFootMotionTask(FootStateCRef state_desired,
                                             const Eigen::Vector3d &a_desired)
 {
-    VALID_LEGNAME(state_desired.foot_name);
+    CHECK(VALID_LEGNAME(state_desired.foot_name));
 
     foot_state_task_[state_desired.foot_name] = state_desired;
     foot_acc_task_[state_desired.foot_name] = a_desired;

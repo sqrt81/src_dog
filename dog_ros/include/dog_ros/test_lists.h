@@ -14,3 +14,4 @@ int test_SwingTraj();
 int test_Traj_stance(int argc, char** argv);
 int test_TrajController(int argc, char** argv);
 int test_WBC_torso(int argc, char** argv);
+int test_DynamicsDiff(int argc, char** argv);
