@@ -171,35 +171,11 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        tail_base:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        tail_end:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        tail_mid:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        tail_root:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
         torso:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        world:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
       Name: RobotModel
       Robot Description: robot_description
       TF Prefix: ""
@@ -273,7 +249,7 @@ Visualization Manager:
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: torso
+    Fixed Frame: world
     Frame Rate: 100
   Name: root
   Tools:
@@ -297,7 +273,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.2529903650283813
+      Distance: 1.9469128847122192
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1

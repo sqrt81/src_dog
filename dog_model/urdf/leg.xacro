@@ -113,7 +113,7 @@
         <link name="${leg_name}_shin">
             <inertial>
                 <origin
-                    xyz="0 ${- 0.00001159 * yflip} 0.09304793"
+                    xyz="0 ${- 0.00001159 * yflip} -0.09304793"
                     rpy="0 0 0" />
                 <mass
                     value="0.1199" />

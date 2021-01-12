@@ -123,7 +123,8 @@ bool GazeboPVEController::init(hardware_interface::EffortJointInterface *hw,
 
     }
 
-    if (nh.getParam(shared_controls, mimic_joint_names))
+    if (nh.getParam(shared_controls, mimic_joint_names)
+            && !mimic_joint_names.empty())
     {
         std::map<std::string, double> mimic_joint_limits;
 
