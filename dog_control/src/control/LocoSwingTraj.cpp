@@ -64,7 +64,7 @@ void LocoSwingTraj::Sample(double t,
 
 bool LocoSwingTraj::DecideEnd(double t, bool in_contact)
 {
-    if (in_contact)
+    if (in_contact && t > (begin_time_ + end_time_) / 2)
         return true;
 
     return (t > end_time_);

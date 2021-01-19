@@ -1,9 +1,9 @@
 CONTROL = {
   WBC = {
-    kp_body_Cartesian = 1,
-    kd_body_Cartesian = 0.1,
-    kp_body_rotation = 0,
-    kd_body_rotation = 0,
+    kp_body_Cartesian = 10, --1,
+    kd_body_Cartesian = 1, --0.1,
+    kp_body_rotation = 1000, --0,
+    kd_body_rotation = 10, --0,
     kp_foot_Cartesian = 10,
     kd_foot_Cartesian = 2,
     
@@ -18,13 +18,13 @@ CONTROL = {
     pred_horizon = 5,
     
     total_inertial_x = 150e-3,
-    total_inertial_y = 150e-3,
-    total_inertial_z = 200e-3,
+    total_inertial_y = 300e-3,
+    total_inertial_z = 300e-3,
     
-    pos_w = 0.1,
+    pos_w = 10, --0.1,
     vel_w = 1,
-    rot_w = 1,
-    rot_vel_w = 10,
+    rot_w = 100, --1,
+    rot_vel_w = 0.1, --10,
     force_w = 1e-6,
   
     f_z_max = 100,
