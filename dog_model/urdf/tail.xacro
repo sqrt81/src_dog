@@ -3,6 +3,8 @@
 <robot
     xmlns:xacro="http://www.ros.org/wiki/xacro">
 
+    <xacro:arg name="add_tail_weight" default="false" />
+
     <xacro:macro name="attach_tail" params="parent_name">
 
         <xacro:macro name="mimic_joint"
@@ -206,6 +208,37 @@
             <origin xyz="${- TAIL_MID_LEN} 0 0" rpy="0 0 0" />
             <axis xyz="0 1 0" />
         </xacro:mimic_joint>
+
+        <xacro:if value="$(arg add_tail_weight)" >
+            <link name="tail_weight">
+                <inertial>
+                    <origin
+                        xyz="0 0 0"
+                        rpy="0 0 0" />
+                    <mass
+                        value="2." />
+                    <inertia
+                        ixx="1E-9"
+                        ixy="0"
+                        ixz="0"
+                        iyy="1E-9"
+                        iyz="0"
+                        izz="1E-9" />
+                </inertial>
+            </link>
+
+            <joint
+                name="tail_weight_fixed"
+                type="fixed">
+                <origin
+                    xyz="0.1 0 0"
+                    rpy="0 0 0" />
+                <parent
+                    link="${parent_name}" />
+                <child
+                    link="tail_weight" />
+            </joint>
+        </xacro:if>
 
     </xacro:macro>
 

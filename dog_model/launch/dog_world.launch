@@ -13,6 +13,7 @@
   
   <arg name="hang_up" default="false" />
   <arg name="add_tail" default="false" />
+  <arg name="add_tail_weight" default="$(arg add_tail)" />
 
   <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -28,7 +29,9 @@
   <param name="robot_description"
     command=
     "$(find xacro)/xacro $(find dog_model)/urdf/robot.xacro
-     hang_up:=$(arg hang_up) add_tail:=$(arg add_tail)" />
+     hang_up:=$(arg hang_up)
+     add_tail:=$(arg add_tail)
+     add_tail_weight:=$(arg add_tail_weight)" />
 
   <!-- Run a python script to the send a service call to gazebo_ros to spawn a URDF robot -->
   <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
